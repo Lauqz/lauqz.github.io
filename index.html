@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guido Laudenzi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #000;
+            color: #fff;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.6;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .orb1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(88, 86, 214, 0.8) 0%, rgba(88, 86, 214, 0) 70%);
+            top: -20%;
+            left: -15%;
+            animation-delay: 0s;
+            animation-duration: 20s;
+        }
+
+        .orb2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(140, 82, 255, 0.7) 0%, rgba(140, 82, 255, 0) 70%);
+            bottom: -15%;
+            right: -10%;
+            animation-delay: -7s;
+            animation-duration: 18s;
+        }
+
+        .orb3 {
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, rgba(58, 134, 255, 0.6) 0%, rgba(58, 134, 255, 0) 70%);
+            top: 40%;
+            left: 60%;
+            animation-delay: -12s;
+            animation-duration: 22s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            33% {
+                transform: translate(100px, -80px) scale(1.2);
+            }
+            66% {
+                transform: translate(-80px, 100px) scale(0.8);
+            }
+        }
+
+        .physics-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            cursor: crosshair;
+        }
+
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 80px 24px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .container > * {
+            pointer-events: auto;
+        }
+
+        .fade-in {
+            animation: fadeIn 1.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-section {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 32px;
+            margin-bottom: 16px;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .profile-pic {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(140, 82, 255, 0.3));
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 40px rgba(88, 86, 214, 0.4);
+            flex-shrink: 0;
+            object-fit: cover;
+            transition: all 0.3s ease;
+        }
+
+        .profile-pic:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 60px rgba(88, 86, 214, 0.6);
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, #999 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 20px;
+            color: #888;
+            margin-bottom: 48px;
+            font-weight: 400;
+        }
+
+        .bio {
+            font-size: 17px;
+            color: #ccc;
+            margin-bottom: 64px;
+            line-height: 1.7;
+        }
+
+        .bio a {
+            color: #fff;
+            text-decoration: none;
+            border-bottom: 1px solid #444;
+            transition: border-color 0.3s ease;
+        }
+
+        .bio a:hover {
+            border-bottom-color: #fff;
+        }
+
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #666;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .projects {
+            margin-bottom: 64px;
+        }
+
+        .project {
+            margin-bottom: 32px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .project:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .project-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .project-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .stars {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .star-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .project-desc {
+            font-size: 15px;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        .links {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 64px;
+        }
+
+        .link {
+            color: #888;
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .link:hover {
+            color: #fff;
+        }
+
+        .link svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        footer {
+            text-align: center;
+            color: #555;
+            font-size: 14px;
+            padding-top: 48px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .interests {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 64px;
+        }
+
+        .interest-tag {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #aaa;
+            transition: all 0.3s ease;
+        }
+
+        .interest-tag:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        @media (max-width: 640px) {
+            .header-section {
+                flex-direction: column-reverse;
+                align-items: center;
+            }
+
+            .profile-pic {
+                width: 100px;
+                height: 100px;
+            }
+
+            .container {
+                padding: 48px 20px;
+            }
+
+            h1 {
+                font-size: 36px;
+            }
+
+            .tagline {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas class="physics-canvas" id="physicsCanvas"></canvas>
+    
+    <div class="bg-animation">
+        <div class="orb orb1"></div>
+        <div class="orb orb2"></div>
+        <div class="orb orb3"></div>
+    </div>
+    
+    <div class="container fade-in">
+        <div class="header-section">
+            <div class="header-text">
+                <h1>Guido Laudenzi</h1>
+                <div class="tagline">AI Engineer</div>
+            </div>
+            <img src="./me.png" alt="Profile" class="profile-pic">
+        </div>
+        
+        <div class="bio">
+            I build AI-powered software that bridges research and real-world applications: from <a href="#">diffusion models</a> to <a href="#">multi-agent systems</a> and <a href="#">RAG</a> architectures. Currently at Machine Learning Reply (Italy), I design full-stack AI systems combining LLMs, multimodal retrieval, and generative models (GANs, diffusion models).<br>
+            Previously at <a href="#">AIST</a> Japan, I researched multi-agent deep reinforcement learning for drone swarms. I enjoy making complex systems simple, scalable, and human-centric with a focus on generative design, autonomous agents, and AI for creativity.<br>
+            Based in Italy, doing something interesting. Dreaming of coming back to Japan, this time to stay.
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/Lauqz" class="link" target="_blank">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
+            </a>
+            <a href="https://www.linkedin.com/in/lauqzz/" class="link" target="_blank">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 3A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3H19M8.34 17V10.67H5.67V17H8.34M7 9.5A1.5 1.5 0 1 0 7 6.5A1.5 1.5 0 0 0 7 9.5M18.33 17V13.5C18.33 11.83 17.5 10.67 15.83 10.67C14.75 10.67 14.08 11.25 13.79 11.83H13.75V10.67H11.08V17H13.75V13.83C13.75 13.08 13.92 12.33 14.83 12.33C15.75 12.33 15.83 13.17 15.83 13.88V17H18.33Z"/>
+                </svg>
+                LinkedIn
+            </a>
+            <a href="mailto:guido.laudenzi@libero.it" class="link">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                Email
+            </a>
+        </div>
+
+        <div class="section-title">Interests</div>
+        <div class="interests">
+            <div class="interest-tag">Machine Learning</div>
+            <div class="interest-tag">Reinforcement Learning</div>
+            <div class="interest-tag">Natural Language Processing</div>
+            <div class="interest-tag">Multi-agent Systems</div>
+            <div class="interest-tag">MLOps</div>
+            <div class="interest-tag">Research</div>
+            <div class="interest-tag">Open Source</div>
+        </div>
+
+        <div class="section-title">Featured Projects</div>
+        <div class="projects">
+            <div class="project" onclick="window.open('https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3', '_blank')">
+                <div class="project-header">
+                    <div class="project-name">Drone-Swarm-RL-airsim-sb3</div>
+                    <div class="stars" id="stars-drone">
+                        <svg class="star-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
+                        <span class="star-count">—</span>
+                    </div>
+                </div>
+                <div class="project-desc">
+                    AIST Research: multi-agent Deep Reinforcement Learning for Drone Swarms using UE4, AirSim, Stable-Baselines3, PettingZoo, SuperSuit.
+                </div>
+            </div>
+
+            <div class="project" onclick="window.open('https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning', '_blank')">
+                <div class="project-header">
+                    <div class="project-name">MCVRP-Multiple-Courier-Planning</div>
+                    <div class="stars" id="stars-mcvrp">
+                        <svg class="star-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
+                        <span class="star-count">—</span>
+                    </div>
+                </div>
+                <div class="project-desc">
+                    Multiple Courier Planning using CP, SMT, MIP in Python.
+                </div>
+            </div>
+
+            <div class="project" onclick="window.open('https://github.com/Lauqz/BlastPursuitMARL', '_blank')">
+                <div class="project-header">
+                    <div class="project-name">BlastPursuitMARL</div>
+                    <div class="stars" id="stars-blast">
+                        <svg class="star-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
+                        <span class="star-count">—</span>
+                    </div>
+                </div>
+                <div class="project-desc">
+                    An extension of Bomberman game using Multi-Agent Deep Reinforcement Learning with Stable Baselines3, PettingZoo, SuperSuit.
+                </div>
+            </div>
+        </div>
+
+        <script>
+        async function updateStars(repo, elementId) {
+            try {
+                const response = await fetch(`https://api.github.com/repos/${repo}`);
+                if (!response.ok) throw new Error(`GitHub API error for ${repo}`);
+                const data = await response.json();
+                const count = data.stargazers_count.toLocaleString();
+                document.querySelector(`#${elementId} .star-count`).textContent = count;
+            } catch (e) {
+                console.error('Error fetching stars:', e);
+            }
+        }
+
+        function refreshAllStars() {
+            updateStars('Lauqz/Drone-Swarm-RL-airsim-sb3', 'stars-drone');
+            updateStars('Lauqz/MCVRP---Multiple-Courier-Planning', 'stars-mcvrp');
+            updateStars('Lauqz/BlastPursuitMARL', 'stars-blast');
+        }
+
+        // Initial load
+        refreshAllStars();
+
+        // Optional: auto-refresh every 5 minutes
+        setInterval(refreshAllStars, 5 * 60 * 1000);
+        </script>
+
+        <footer>
+            Built with care · Updated October 2025
+        </footer>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('physicsCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+        let balls = [];
+        let particles = [];
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.size = Math.random() * 2 + 1;
+                this.color = color;
+                this.life = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color.replace('0.3)', `${this.life * 0.6})`);
+                ctx.fill();
+            }
+        }
+
+        class Ball {
+            constructor(x, y, size, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = size || (Math.random() * 3 + 2);
+                this.mass = this.size * this.size; // Mass proportional to area
+                this.maxSpeed = Math.random() * 3 + 4; // Different max speeds for each ball
+                this.color = color || `hsla(${Math.random() * 60 + 220}, 70%, 60%, 0.3)`;
+                this.hue = parseInt(this.color.match(/\d+/)[0]);
+                this.splitTimer = Math.random() * 400 + 200;
+                this.mergeTimer = Math.random() * 300 + 150;
+                this.exploding = false;
+                this.explosionTimer = 0;
+                this.targetX = null;
+                this.targetY = null;
+            }
+
+            explode(clickX, clickY, force) {
+                const dx = this.x - clickX;
+                const dy = this.y - clickY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                
+                // Force decreases with distance
+                const explosionForce = force / (dist * 0.01 + 1);
+                
+                this.vx += Math.cos(angle) * explosionForce;
+                this.vy += Math.sin(angle) * explosionForce;
+                this.exploding = true;
+                this.explosionTimer = 60; // Frames before returning to normal
+
+                // Create particles
+                for (let i = 0; i < 3; i++) {
+                    particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+
+            update() {
+                if (this.explosionTimer > 0) {
+                    this.explosionTimer--;
+                    if (this.explosionTimer === 0) {
+                        this.exploding = false;
+                    }
+                }
+
+                // Attraction to mouse (stronger when not exploding)
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (!this.exploding && dist > 5) {
+                    const attractionForce = this.exploding ? 0.0001 : 0.0004;
+                    this.vx += dx * attractionForce;
+                    this.vy += dy * attractionForce;
+                } else if (this.exploding) {
+                    // During explosion, slight pull back towards mouse
+                    if (this.explosionTimer < 30) {
+                        this.vx += dx * 0.0008;
+                        this.vy += dy * 0.0008;
+                    }
+                }
+
+                // Apply friction
+                this.vx *= 0.985;
+                this.vy *= 0.985;
+
+                // Limit velocity to max speed
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                if (speed > this.maxSpeed) {
+                    this.vx = (this.vx / speed) * this.maxSpeed;
+                    this.vy = (this.vy / speed) * this.maxSpeed;
+                }
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges with energy loss
+                const restitution = 0.85;
+                if (this.x - this.size < 0) {
+                    this.x = this.size;
+                    this.vx *= -restitution;
+                }
+                if (this.x + this.size > canvas.width) {
+                    this.x = canvas.width - this.size;
+                    this.vx *= -restitution;
+                }
+                if (this.y - this.size < 0) {
+                    this.y = this.size;
+                    this.vy *= -restitution;
+                }
+                if (this.y + this.size > canvas.height) {
+                    this.y = canvas.height - this.size;
+                    this.vy *= -restitution;
+                }
+
+                // Random split (disabled during explosion)
+                if (!this.exploding) {
+                    this.splitTimer--;
+                    if (this.splitTimer <= 0 && balls.length < 25 && this.size > 2.5) {
+                        if (Math.random() < 0.25) {
+                            this.split();
+                        }
+                        this.splitTimer = Math.random() * 400 + 200;
+                    }
+
+                    // Random merge
+                    this.mergeTimer--;
+                    if (this.mergeTimer <= 0) {
+                        if (Math.random() < 0.15) {
+                            this.tryMerge();
+                        }
+                        this.mergeTimer = Math.random() * 300 + 150;
+                    }
+                }
+            }
+
+            split() {
+                const angle = Math.random() * Math.PI * 2;
+                const newSize = this.size * 0.7;
+                const offset = this.size + newSize;
+                
+                balls.push(new Ball(
+                    this.x + Math.cos(angle) * offset,
+                    this.y + Math.sin(angle) * offset,
+                    newSize,
+                    this.color
+                ));
+                this.size = newSize;
+                this.mass = this.size * this.size;
+            }
+
+            tryMerge() {
+                for (let i = balls.length - 1; i >= 0; i--) {
+                    const other = balls[i];
+                    if (other === this) continue;
+
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < this.size + other.size + 8 && this.size + other.size < 7) {
+                        // Merge balls
+                        const totalMass = this.mass + other.mass;
+                        this.vx = (this.vx * this.mass + other.vx * other.mass) / totalMass;
+                        this.vy = (this.vy * this.mass + other.vy * other.mass) / totalMass;
+                        this.size = Math.sqrt(this.size * this.size + other.size * other.size);
+                        this.mass = this.size * this.size;
+                        balls.splice(i, 1);
+                        return;
+                    }
+                }
+            }
+
+            checkCollision(other) {
+                const dx = other.x - this.x;
+                const dy = other.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = this.size + other.size;
+
+                if (dist < minDist && dist > 0) {
+                    // Separate overlapping balls
+                    const angle = Math.atan2(dy, dx);
+                    const overlap = minDist - dist;
+                    
+                    // Move balls apart proportional to their mass (lighter balls move more)
+                    const totalMass = this.mass + other.mass;
+                    const ratio1 = other.mass / totalMass;
+                    const ratio2 = this.mass / totalMass;
+                    
+                    const separationX = Math.cos(angle) * overlap;
+                    const separationY = Math.sin(angle) * overlap;
+                    
+                    this.x -= separationX * ratio1;
+                    this.y -= separationY * ratio1;
+                    other.x += separationX * ratio2;
+                    other.y += separationY * ratio2;
+
+                    // Calculate relative velocity
+                    const dvx = other.vx - this.vx;
+                    const dvy = other.vy - this.vy;
+                    
+                    // Calculate relative velocity in collision normal direction
+                    const dvDotProduct = dvx * Math.cos(angle) + dvy * Math.sin(angle);
+                    
+                    // Only resolve if objects are moving toward each other
+                    if (dvDotProduct > 0) {
+                        // Coefficient of restitution (bounciness)
+                        const restitution = 0.92;
+                        
+                        // Calculate impulse scalar
+                        const impulse = (2 * dvDotProduct) / (this.mass + other.mass);
+                        
+                        // Apply impulse to velocities
+                        this.vx += impulse * other.mass * Math.cos(angle) * restitution;
+                        this.vy += impulse * other.mass * Math.sin(angle) * restitution;
+                        other.vx -= impulse * this.mass * Math.cos(angle) * restitution;
+                        other.vy -= impulse * this.mass * Math.sin(angle) * restitution;
+
+                        // Create collision particles
+                        if (Math.random() < 0.3) {
+                            const collisionX = this.x + Math.cos(angle) * this.size;
+                            const collisionY = this.y + Math.sin(angle) * this.size;
+                            particles.push(new Particle(collisionX, collisionY, this.color));
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                const intensity = this.exploding ? 1.5 : 1;
+                const glowSize = this.exploding ? 20 : 10;
+                
+                // Draw glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+                gradient.addColorStop(0, this.color.replace('0.3)', `${0.4 * intensity})`));
+                gradient.addColorStop(1, this.color.replace('0.3)', '0)'));
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Draw ball
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = glowSize * intensity;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Highlight
+                const highlightGradient = ctx.createRadialGradient(
+                    this.x - this.size * 0.3, 
+                    this.y - this.size * 0.3, 
+                    0,
+                    this.x, 
+                    this.y, 
+                    this.size
+                );
+                highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = highlightGradient;
+                ctx.fill();
+            }
+        }
+
+        // Initialize balls
+        for (let i = 0; i < 20; i++) {
+            balls.push(new Ball(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height
+            ));
+        }
+
+        // Mouse tracking
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        // Click explosion
+        window.addEventListener('click', (e) => {
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+            const explosionForce = 15;
+
+            // Create explosion particles
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(
+                    clickX, 
+                    clickY, 
+                    `hsla(${Math.random() * 60 + 220}, 70%, 60%, 0.3)`
+                ));
+            }
+
+            // Explode all balls
+            balls.forEach(ball => {
+                ball.explode(clickX, clickY, explosionForce);
+            });
+        });
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Update all balls
+            balls.forEach(ball => ball.update());
+            
+            // Check collisions between all balls
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    balls[i].checkCollision(balls[j]);
+                }
+            }
+            
+            // Draw all balls
+            balls.forEach(ball => ball.draw());
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
