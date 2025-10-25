@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Guido Laudenzi</title>
     <style>
+        .chat-box,
+        .chat-widget {
+            transition: bottom 0.3s ease, max-height 0.3s ease;
+        }
+        
+        @supports (-webkit-touch-callout: none) {
+            /* iOS specific fix */
+            .chat-box.open {
+                position: fixed;
+            }
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -1619,7 +1631,7 @@
         // GitHub Stats Loader (from pre-generated stats.json)
         async function loadGitHubStats() {
             try {
-                const response = await fetch('./stats.json?' + Date.now()); // Cache busting
+                const response = await fetch('../stats.json?' + Date.now()); // Cache busting
                 if (!response.ok) throw new Error('Stats file not found');
                 const stats = await response.json();
                 
@@ -1986,6 +1998,56 @@
         }
 
         animate();
+        
+        // Fix chat position when mobile keyboard opens
+        if ('visualViewport' in window) {
+            const viewport = window.visualViewport;
+            
+            function adjustChatForKeyboard() {
+                const chatBox = document.getElementById('chatBox');
+                const chatWidget = document.querySelector('.chat-widget');
+                
+                if (!chatBox.classList.contains('open')) return;
+                
+                const viewportHeight = viewport.height;
+                const windowHeight = window.innerHeight;
+                const keyboardHeight = windowHeight - viewportHeight;
+                
+                if (keyboardHeight > 100) { // Keyboard is open
+                    chatBox.style.bottom = `${keyboardHeight + 10}px`;
+                    chatBox.style.maxHeight = `${viewportHeight - 30}px`;
+                    chatWidget.style.bottom = `${keyboardHeight + 10}px`;
+                } else { // Keyboard is closed
+                    chatBox.style.bottom = '75px';
+                    chatBox.style.maxHeight = '';
+                    chatWidget.style.bottom = '';
+                }
+            }
+            
+            viewport.addEventListener('resize', adjustChatForKeyboard);
+            viewport.addEventListener('scroll', adjustChatForKeyboard);
+            
+            // Also adjust when chat opens
+            chatOrb.addEventListener('click', () => {
+                setTimeout(adjustChatForKeyboard, 100);
+            });
+            
+            // Adjust when input is focused
+            chatInput.addEventListener('focus', () => {
+                setTimeout(adjustChatForKeyboard, 300);
+            });
+            
+            chatInput.addEventListener('blur', () => {
+                setTimeout(adjustChatForKeyboard, 100);
+            });
+        }
+        
+        // Scroll to input when keyboard opens (backup method)
+        chatInput.addEventListener('focus', () => {
+            setTimeout(() => {
+                chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 300);
+        });
     </script>
 </body>
 </html>
