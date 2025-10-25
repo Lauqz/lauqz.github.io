@@ -2,10 +2,13 @@ name: Update GitHub Stats
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Run daily at midnight
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 0 * * *'
+  workflow_dispatch:
   push:
     branches: [ main ]
+
+permissions:
+  contents: write  # allow the workflow to push commits
 
 jobs:
   update-stats:
@@ -13,7 +16,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
+
       - name: Fetch GitHub Stats
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -21,37 +24,49 @@ jobs:
           # Fetch repos
           REPOS=$(curl -H "Authorization: token $GITHUB_TOKEN" \
             https://api.github.com/users/Lauqz/repos?per_page=100)
-          
+
           # Fetch specific repo stars
           DRONE_STARS=$(curl -H "Authorization: token $GITHUB_TOKEN" \
             https://api.github.com/repos/Lauqz/Drone-Swarm-RL-airsim-sb3 | jq '.stargazers_count')
-          
+
           MCVRP_STARS=$(curl -H "Authorization: token $GITHUB_TOKEN" \
             https://api.github.com/repos/Lauqz/MCVRP---Multiple-Courier-Planning | jq '.stargazers_count')
-          
+
           BLAST_STARS=$(curl -H "Authorization: token $GITHUB_TOKEN" \
             https://api.github.com/repos/Lauqz/BlastPursuitMARL | jq '.stargazers_count')
-          
+
           # Count non-forked repos
-          PROJECT_COUNT=$(echo $REPOS | jq '[.[] | select(.fork == false)] | length')
-          
-          # Create stats.json
-          cat > stats.json << EOF
+          PROJECT_COUNT=$(echo "$REPOS" | jq '[.[] | select(.fork == false)] | length')
+
+          # Create stats.json at root
+          cat > stats.json << 'EOF'
           {
-            "projectCount": $PROJECT_COUNT,
+            "projectCount": __PROJECT_COUNT__,
             "stars": {
-              "drone": $DRONE_STARS,
-              "mcvrp": $MCVRP_STARS,
-              "blast": $BLAST_STARS
+              "drone": __DRONE_STARS__,
+              "mcvrp": __MCVRP_STARS__,
+              "blast": __BLAST_STARS__
             },
-            "lastUpdated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            "lastUpdated": "__LAST_UPDATED__"
           }
           EOF
-          
+
+          # Replace placeholders safely
+          sed -i "s/__PROJECT_COUNT__/${PROJECT_COUNT}/" stats.json
+          sed -i "s/__DRONE_STARS__/${DRONE_STARS}/" stats.json
+          sed -i "s/__MCVRP_STARS__/${MCVRP_STARS}/" stats.json
+          sed -i "s/__BLAST_STARS__/${BLAST_STARS}/" stats.json
+          sed -i "s/__LAST_UPDATED__/$(date -u +%Y-%m-%dT%H:%M:%SZ)/" stats.json
+
+      - name: Move stats.json into docs
+        run: |
+          mkdir -p docs
+          mv -f stats.json docs/stats.json
+
       - name: Commit stats
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add stats.json
+          git add -A
           git diff --quiet && git diff --staged --quiet || git commit -m "Update GitHub stats [skip ci]"
           git push
