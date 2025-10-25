@@ -928,6 +928,21 @@
                 font-size: 13px;
                 padding: 6px 12px;
             }
+
+            .chat-widget {
+                position: fixed !important;
+                transition: bottom 0.3s ease;
+            }
+            
+            .chat-box {
+                position: fixed !important;
+                transition: height 0.3s ease, max-height 0.3s ease;
+            }
+            
+            /* Ensure chat stays above keyboard when open */
+            .chat-box.open {
+                display: flex !important;
+            }
         }
     </style>
 </head>
@@ -1630,55 +1645,66 @@
 
         // GitHub Stats Loader (from pre-generated stats.json)
         async function loadGitHubStats() {
-            // Try multiple possible paths
-            const possiblePaths = [
-                '../stats.json',  // One level up (for /docs/index.html)
-                '/stats.json',    // Absolute from root
-                './stats.json',   // Same directory
-                'stats.json'      // Relative
-            ];
-            
-            for (const path of possiblePaths) {
-                try {
-                    const response = await fetch(path + '?' + Date.now()); // Cache busting
-                    if (!response.ok) continue;
-                    
-                    const stats = await response.json();
-                    
-                    // Update project count
-                    const projectElement = document.getElementById('projectCount');
-                    animateCounter(projectElement, 0, stats.projectCount, 2000);
-                    
-                    // Update stars
-                    document.querySelector('#stars-drone .star-count').textContent = 
-                        stats.stars.drone.toLocaleString();
-                    document.querySelector('#stars-mcvrp .star-count').textContent = 
-                        stats.stars.mcvrp.toLocaleString();
-                    document.querySelector('#stars-blast .star-count').textContent = 
-                        stats.stars.blast.toLocaleString();
-                    
-                    console.log('Stats loaded from:', path);
-                    return; // Success, exit function
-                    
-                } catch (e) {
-                    console.log(`Failed to load from ${path}:`, e.message);
-                    continue; // Try next path
+            try {
+                // Try root path first (most common for deployed sites)
+                const response = await fetch('./stats.json?' + Date.now());
+                
+                if (!response.ok) {
+                    throw new Error('Stats file not found');
                 }
+                
+                const stats = await response.json();
+                console.log('Stats loaded:', stats);
+                
+                // Update project count with animation
+                const projectElement = document.getElementById('projectCount');
+                if (projectElement) {
+                    animateCounter(projectElement, 0, stats.projectCount || 50, 2000);
+                }
+                
+                // Update stars - with null checks
+                const droneStars = document.querySelector('#stars-drone .star-count');
+                const mcvrpStars = document.querySelector('#stars-mcvrp .star-count');
+                const blastStars = document.querySelector('#stars-blast .star-count');
+                
+                if (droneStars && stats.stars && stats.stars.drone !== undefined) {
+                    droneStars.textContent = stats.stars.drone;
+                }
+                
+                if (mcvrpStars && stats.stars && stats.stars.mcvrp !== undefined) {
+                    mcvrpStars.textContent = stats.stars.mcvrp;
+                }
+                
+                if (blastStars && stats.stars && stats.stars.blast !== undefined) {
+                    blastStars.textContent = stats.stars.blast;
+                }
+                
+                console.log('Stats successfully applied to DOM');
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                
+                // Fallback values
+                const projectElement = document.getElementById('projectCount');
+                if (projectElement) {
+                    projectElement.textContent = '50+';
+                }
+                
+                // Set fallback for stars
+                document.querySelectorAll('.star-count').forEach(el => {
+                    el.textContent = '—';
+                });
             }
-            
-            // If all paths failed, use fallback values
-            console.warn('Could not load stats from any path, using fallbacks');
-            document.getElementById('projectCount').textContent = '50+';
-            document.querySelectorAll('.star-count').forEach(el => {
-                el.textContent = '—';
-            });
         }
-
+        
         // Helper function for counter animation
         function animateCounter(element, start, end, duration) {
+            if (!element) return;
+            
             let current = start;
             const range = end - start;
             const increment = range / (duration / 16);
+            
             const timer = setInterval(() => {
                 current += increment;
                 if (current >= end) {
@@ -2016,57 +2042,104 @@
 
         animate();
         
-        // Fix chat position when mobile keyboard opens
-        if ('visualViewport' in window) {
-            const viewport = window.visualViewport;
+        // Fix chat position when mobile keyboard opens - IMPROVED VERSION
+        let isKeyboardOpen = false;
+        let lastViewportHeight = window.innerHeight;
+        
+        function handleChatKeyboard() {
+            const chatBox = document.getElementById('chatBox');
+            const chatWidget = document.querySelector('.chat-widget');
+            const chatInput = document.getElementById('chatInput');
             
-            function adjustChatForKeyboard() {
-                const chatBox = document.getElementById('chatBox');
-                const chatWidget = document.querySelector('.chat-widget');
-                
-                if (!chatBox.classList.contains('open')) return;
-                
-                const viewportHeight = viewport.height;
-                const windowHeight = window.innerHeight;
-                const keyboardHeight = windowHeight - viewportHeight;
-                
-                if (keyboardHeight > 100) { // Keyboard is open
-                    // Only adjust the widget position, chatBox is relative to it
-                    chatWidget.style.bottom = `${keyboardHeight + 20}px`;
-                    // Adjust chat box height to fit in visible viewport
-                    const maxHeight = Math.min(viewportHeight - 100, 600);
-                    chatBox.style.maxHeight = `${maxHeight}px`;
-                    chatBox.style.height = `${maxHeight}px`;
-                } else { // Keyboard is closed
-                    chatWidget.style.bottom = '30px'; // Reset to CSS default
-                    chatBox.style.maxHeight = '';
-                    chatBox.style.height = '';
-                }
+            if (!chatBox.classList.contains('open')) {
+                // Reset when chat is closed
+                chatWidget.style.bottom = '';
+                chatWidget.style.position = '';
+                chatBox.style.height = '';
+                chatBox.style.maxHeight = '';
+                return;
             }
             
-            viewport.addEventListener('resize', adjustChatForKeyboard);
-            viewport.addEventListener('scroll', adjustChatForKeyboard);
+            // Detect keyboard by viewport height change
+            const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const heightDiff = lastViewportHeight - currentHeight;
             
-            // Also adjust when chat opens
-            chatOrb.addEventListener('click', () => {
-                setTimeout(adjustChatForKeyboard, 100);
-            });
+            if (heightDiff > 150) {
+                // Keyboard is open
+                isKeyboardOpen = true;
+                
+                // Position chat widget at bottom of visible viewport
+                chatWidget.style.position = 'fixed';
+                chatWidget.style.bottom = '10px';
+                
+                // Calculate available height for chat
+                const availableHeight = currentHeight - 20; // 20px for padding
+                const maxChatHeight = Math.min(availableHeight * 0.85, 550);
+                
+                chatBox.style.height = `${maxChatHeight}px`;
+                chatBox.style.maxHeight = `${maxChatHeight}px`;
+                
+                // Scroll to show input after a brief delay
+                setTimeout(() => {
+                    const chatMessages = document.getElementById('chatMessages');
+                    if (chatMessages) {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                    // Ensure input stays in view
+                    chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+                
+            } else if (heightDiff < -150 || currentHeight > lastViewportHeight) {
+                // Keyboard is closed
+                isKeyboardOpen = false;
+                
+                // Reset to default positions
+                chatWidget.style.position = '';
+                chatWidget.style.bottom = '';
+                chatBox.style.height = '';
+                chatBox.style.maxHeight = '';
+            }
             
-            // Adjust when input is focused
-            chatInput.addEventListener('focus', () => {
-                setTimeout(adjustChatForKeyboard, 300);
-            });
-            
-            chatInput.addEventListener('blur', () => {
-                setTimeout(adjustChatForKeyboard, 100);
-            });
+            lastViewportHeight = currentHeight;
         }
         
-        // Scroll to input when keyboard opens (backup method)
+        // Multiple event listeners for different scenarios
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleChatKeyboard);
+            window.visualViewport.addEventListener('scroll', handleChatKeyboard);
+        }
+        
+        window.addEventListener('resize', handleChatKeyboard);
+        
+        // Handle input focus/blur
         chatInput.addEventListener('focus', () => {
+            setTimeout(handleChatKeyboard, 300);
             setTimeout(() => {
                 const chatMessages = document.getElementById('chatMessages');
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                if (chatMessages) {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            }, 400);
+        });
+        
+        chatInput.addEventListener('blur', () => {
+            setTimeout(handleChatKeyboard, 100);
+        });
+        
+        // Handle chat open/close
+        chatOrb.addEventListener('click', () => {
+            setTimeout(handleChatKeyboard, 150);
+        });
+        
+        closeChat.addEventListener('click', () => {
+            handleChatKeyboard(); // Reset positions
+        });
+        
+        // Handle orientation change
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                lastViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                handleChatKeyboard();
             }, 300);
         });
     </script>
