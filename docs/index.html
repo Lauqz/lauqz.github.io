@@ -1630,31 +1630,48 @@
 
         // GitHub Stats Loader (from pre-generated stats.json)
         async function loadGitHubStats() {
-            try {
-                const response = await fetch('../stats.json?' + Date.now()); // Cache busting
-                if (!response.ok) throw new Error('Stats file not found');
-                const stats = await response.json();
-                
-                // Update project count
-                const projectElement = document.getElementById('projectCount');
-                animateCounter(projectElement, 0, stats.projectCount, 2000);
-                
-                // Update stars
-                document.querySelector('#stars-drone .star-count').textContent = 
-                    stats.stars.drone.toLocaleString();
-                document.querySelector('#stars-mcvrp .star-count').textContent = 
-                    stats.stars.mcvrp.toLocaleString();
-                document.querySelector('#stars-blast .star-count').textContent = 
-                    stats.stars.blast.toLocaleString();
+            // Try multiple possible paths
+            const possiblePaths = [
+                '../stats.json',  // One level up (for /docs/index.html)
+                '/stats.json',    // Absolute from root
+                './stats.json',   // Same directory
+                'stats.json'      // Relative
+            ];
+            
+            for (const path of possiblePaths) {
+                try {
+                    const response = await fetch(path + '?' + Date.now()); // Cache busting
+                    if (!response.ok) continue;
                     
-            } catch (e) {
-                console.error('Error loading stats:', e);
-                // Fallback values
-                document.getElementById('projectCount').textContent = '50+';
-                document.querySelectorAll('.star-count').forEach(el => {
-                    el.textContent = '—';
-                });
+                    const stats = await response.json();
+                    
+                    // Update project count
+                    const projectElement = document.getElementById('projectCount');
+                    animateCounter(projectElement, 0, stats.projectCount, 2000);
+                    
+                    // Update stars
+                    document.querySelector('#stars-drone .star-count').textContent = 
+                        stats.stars.drone.toLocaleString();
+                    document.querySelector('#stars-mcvrp .star-count').textContent = 
+                        stats.stars.mcvrp.toLocaleString();
+                    document.querySelector('#stars-blast .star-count').textContent = 
+                        stats.stars.blast.toLocaleString();
+                    
+                    console.log('Stats loaded from:', path);
+                    return; // Success, exit function
+                    
+                } catch (e) {
+                    console.log(`Failed to load from ${path}:`, e.message);
+                    continue; // Try next path
+                }
             }
+            
+            // If all paths failed, use fallback values
+            console.warn('Could not load stats from any path, using fallbacks');
+            document.getElementById('projectCount').textContent = '50+';
+            document.querySelectorAll('.star-count').forEach(el => {
+                el.textContent = '—';
+            });
         }
 
         // Helper function for counter animation
@@ -2014,13 +2031,16 @@
                 const keyboardHeight = windowHeight - viewportHeight;
                 
                 if (keyboardHeight > 100) { // Keyboard is open
-                    chatBox.style.bottom = `${keyboardHeight + 10}px`;
-                    chatBox.style.maxHeight = `${viewportHeight - 30}px`;
-                    chatWidget.style.bottom = `${keyboardHeight + 10}px`;
+                    // Only adjust the widget position, chatBox is relative to it
+                    chatWidget.style.bottom = `${keyboardHeight + 20}px`;
+                    // Adjust chat box height to fit in visible viewport
+                    const maxHeight = Math.min(viewportHeight - 100, 600);
+                    chatBox.style.maxHeight = `${maxHeight}px`;
+                    chatBox.style.height = `${maxHeight}px`;
                 } else { // Keyboard is closed
-                    chatBox.style.bottom = '75px';
+                    chatWidget.style.bottom = '30px'; // Reset to CSS default
                     chatBox.style.maxHeight = '';
-                    chatWidget.style.bottom = '';
+                    chatBox.style.height = '';
                 }
             }
             
@@ -2045,7 +2065,8 @@
         // Scroll to input when keyboard opens (backup method)
         chatInput.addEventListener('focus', () => {
             setTimeout(() => {
-                chatInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }, 300);
         });
     </script>
