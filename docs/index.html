@@ -782,6 +782,10 @@
                 align-items: center;
             }
         
+            .header-text {
+                width: 100%;
+            }
+        
             .profile-pic {
                 width: 100px;
                 height: 100px;
@@ -793,72 +797,131 @@
         
             h1 {
                 font-size: 36px;
+                text-align: center;
             }
         
             .tagline {
-                font-size: 18px;
-                flex-direction: column;
-                align-items: flex-start;
+                font-size: 16px;
+                justify-content: center;
+                gap: 8px;
+            }
+        
+            .availability {
+                font-size: 12px;
+                padding: 5px 12px;
+            }
+        
+            .bio {
+                font-size: 15px;
             }
         
             .chat-widget {
                 bottom: 20px;
                 left: 20px;
-            }
-        
-            .chat-orb {
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-        
-            .chat-box {
-                width: calc(100vw - 40px);
-                max-width: 100%;
-                height: auto;
-                max-height: calc(100vh - 140px);
-                left: 50%;
-                transform: translateX(-50%);
-                bottom: 70px; /* Just above the orb */
                 right: auto;
             }
         
+            .chat-orb {
+                width: 56px;
+                height: 56px;
+                font-size: 22px;
+            }
+        
+            .chat-box {
+                position: fixed;
+                width: calc(100vw - 40px);
+                max-width: 420px;
+                height: 70vh;
+                max-height: 600px;
+                left: 20px;
+                right: 20px;
+                bottom: 90px;
+                margin: 0 auto;
+                transform: none;
+            }
+        
             .chat-box.open {
-                transform: translateX(-50%);
+                transform: none;
+            }
+        
+            .chat-header h3 {
+                font-size: 15px;
+            }
+        
+            .chat-header small {
+                font-size: 11px;
             }
         
             .chat-messages {
-                max-height: calc(60vh - 200px);
-                min-height: 200px;
+                height: auto;
+                flex: 1;
+                min-height: 250px;
+            }
+        
+            .message {
+                font-size: 14px;
+                max-width: 90%;
             }
         
             .quick-questions {
-                max-height: 60px;
-                font-size: 10px;
+                max-height: 70px;
+                padding: 10px 15px;
             }
         
             .quick-btn {
-                font-size: 10px;
-                padding: 5px 8px;
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+        
+            .chat-input {
+                font-size: 14px;
+                padding: 10px 14px;
+            }
+        
+            .chat-send {
+                padding: 10px 16px;
+                font-size: 14px;
             }
         
             .sticky-cta {
                 bottom: 20px;
                 right: 20px;
-                left: auto;
                 padding: 12px 20px;
                 font-size: 13px;
             }
         
             .metrics {
                 grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+        
+            .metric {
+                padding: 16px;
+            }
+        
+            .metric-value {
+                font-size: 28px;
+            }
+        
+            .links {
+                flex-direction: column;
+                gap: 16px;
+            }
+        
+            .interests {
+                gap: 8px;
+            }
+        
+            .interest-tag {
+                font-size: 13px;
+                padding: 6px 12px;
             }
         }
     </style>
 </head>
 <body>
     <div class="cursor"></div>
-    <div class="hint-toast">Click anywhere to create explosions</div>
+    <!--<div class="hint-toast">Click anywhere to create explosions</div>-->
     <div class="toast" id="toast"></div>
     
     <button class="sticky-cta" id="ctaBtn">
