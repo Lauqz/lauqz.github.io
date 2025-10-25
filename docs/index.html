@@ -781,44 +781,75 @@
                 flex-direction: column-reverse;
                 align-items: center;
             }
-
+        
             .profile-pic {
                 width: 100px;
                 height: 100px;
             }
-
+        
             .container {
                 padding: 48px 20px;
             }
-
+        
             h1 {
                 font-size: 36px;
             }
-
+        
             .tagline {
                 font-size: 18px;
                 flex-direction: column;
                 align-items: flex-start;
             }
-
+        
+            .chat-widget {
+                bottom: 20px;
+                left: 20px;
+            }
+        
+            .chat-orb {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        
             .chat-box {
                 width: calc(100vw - 40px);
+                max-width: 100%;
+                height: auto;
+                max-height: calc(100vh - 140px);
                 left: 50%;
                 transform: translateX(-50%);
-                bottom: 75px;
+                bottom: 70px; /* Just above the orb */
+                right: auto;
             }
-
+        
             .chat-box.open {
                 transform: translateX(-50%);
             }
-
-            .sticky-cta {
-                bottom: 100px;
-                right: 20px;
-                padding: 14px 24px;
-                font-size: 14px;
+        
+            .chat-messages {
+                max-height: calc(60vh - 200px);
+                min-height: 200px;
             }
-
+        
+            .quick-questions {
+                max-height: 60px;
+                font-size: 10px;
+            }
+        
+            .quick-btn {
+                font-size: 10px;
+                padding: 5px 8px;
+            }
+        
+            .sticky-cta {
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+                padding: 12px 20px;
+                font-size: 13px;
+            }
+        
             .metrics {
                 grid-template-columns: repeat(2, 1fr);
             }
