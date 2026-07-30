@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>guido@lab: ~/portfolio</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #efe9dc;
+            --term-bg: #fbf7ee;
+            --ink: #33302a;
+            --dim: #8d8779;
+            --green: #0a7d33;
+            --violet: #5b45d6;
+            --orange: #c2570d;
+            --red: #c23616;
+            --yellow: #f7c948;
+            --line: #ddd5c2;
+            --mono: 'JetBrains Mono', ui-monospace, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            background-image: radial-gradient(rgba(51, 48, 42, 0.06) 1px, transparent 1px);
+            background-size: 22px 22px;
+            font-family: var(--mono);
+            color: var(--ink);
+            padding: 40px 16px 100px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        ::selection { background: var(--violet); color: #fff; }
+
+        .terminal {
+            max-width: 980px;
+            margin: 0 auto;
+            background: var(--term-bg);
+            border: 1.5px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 30px 70px -30px rgba(51, 48, 42, 0.4), 0 2px 8px rgba(51, 48, 42, 0.08);
+            overflow: hidden;
+        }
+
+        .titlebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 13px 18px;
+            background: #f1ead9;
+            border-bottom: 1.5px solid var(--line);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        .dot { width: 13px; height: 13px; border-radius: 50%; }
+        .dot.r { background: #ff5f57; }
+        .dot.y { background: #febc2e; }
+        .dot.g { background: #28c840; }
+
+        .titlebar .title {
+            flex: 1;
+            text-align: center;
+            font-size: 12.5px;
+            color: var(--dim);
+        }
+
+        .screen { padding: 26px 28px 20px; }
+
+        .block { margin-bottom: 26px; }
+
+        .prompt-line { display: flex; flex-wrap: wrap; gap: 0 8px; font-weight: 500; }
+        .u { color: var(--green); font-weight: 700; }
+        .p { color: var(--violet); }
+        .cmd { color: var(--ink); font-weight: 700; }
+        .flag { color: var(--orange); }
+
+        .out { margin-top: 8px; color: #4a463c; }
+
+        .out h1 {
+            font-size: clamp(20px, 4.2vw, 34px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+
+        .out .role { color: var(--violet); font-weight: 700; }
+
+        .comment { color: var(--dim); font-style: italic; }
+        .key { color: var(--violet); font-weight: 500; }
+        .str { color: var(--green); }
+        .num { color: var(--orange); font-weight: 700; }
+        .hl { background: var(--yellow); color: var(--ink); padding: 0 4px; border-radius: 3px; font-weight: 700; }
+        .warn { color: var(--red); font-weight: 700; }
+
+        a { color: var(--violet); text-decoration: none; border-bottom: 1px dashed var(--violet); }
+        a:hover { background: var(--violet); color: #fff; border-bottom-style: solid; }
+
+        .tree { white-space: pre; overflow-x: auto; }
+
+        table.ls { border-collapse: collapse; width: 100%; }
+        table.ls td { padding: 4px 18px 4px 0; vertical-align: top; }
+        table.ls td.perm { color: var(--dim); white-space: nowrap; }
+        table.ls td.sz { color: var(--orange); text-align: right; white-space: nowrap; }
+
+        .job-block { margin: 14px 0; padding-left: 16px; border-left: 3px solid var(--line); }
+        .job-block:hover { border-left-color: var(--violet); }
+        .job-block .jr { color: var(--ink); font-weight: 700; }
+        .job-block .jc { color: var(--dim); }
+        .job-block ul { list-style: none; margin-top: 4px; }
+        .job-block li { padding-left: 18px; position: relative; }
+        .job-block li::before { content: '·'; position: absolute; left: 4px; color: var(--violet); font-weight: 700; }
+
+        .bar { display: inline-block; color: var(--violet); letter-spacing: -1px; }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 9px;
+            height: 17px;
+            background: var(--ink);
+            vertical-align: text-bottom;
+            animation: blink 1.1s steps(1) infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Interactive prompt */
+        .live-input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0 8px;
+            align-items: baseline;
+        }
+
+        #liveInput {
+            flex: 1;
+            min-width: 160px;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: var(--mono);
+            font-size: 14px;
+            color: var(--ink);
+            font-weight: 700;
+            caret-color: var(--violet);
+        }
+
+        .hint-chips { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .hint-chips button {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: transparent;
+            color: var(--violet);
+            border: 1.5px solid var(--violet);
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+
+        .hint-chips button:hover { background: var(--violet); color: #fff; }
+
+        .variants {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: var(--ink);
+            color: var(--term-bg);
+            font-size: 11px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+
+        .variants a { color: var(--term-bg); border: none; opacity: 0.7; }
+        .variants a:hover, .variants a.on { opacity: 1; color: #b3a6ff; background: transparent; }
+
+        @media (max-width: 640px) {
+            body { padding: 14px 8px 90px; font-size: 12.5px; }
+            .screen { padding: 18px 14px; }
+            table.ls td { padding-right: 10px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cursor-blink { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="titlebar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="title">guido@lab: ~/portfolio - zsh</span>
+        </div>
+        <div class="screen" id="screen">
+
+            <div class="block">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd" id="typedCmd"></span><span class="cursor-blink" id="typeCursor"></span></div>
+                <div class="out" id="whoamiOut" style="display:none;">
+                    <h1>Guido Laudenzi</h1>
+                    <div><span class="role">AI &amp; Research Engineer</span> - multi-agent RL · LLM agents · training environments &amp; evals · generative AI</div>
+                    <div class="comment"># Italy ❤️ Japan · open to opportunities · M.Sc. AI @ UNIBO (110/110, GPA 4.0)</div>
+                </div>
+            </div>
+
+            <div class="block hidden-until-typed" style="display:none;">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd">cat</span> <span>research.md</span></div>
+                <div class="out">
+                    <div><span class="warn">[UNDER REVIEW]</span> <b>“An End-to-End Multi-Agent Reinforcement Learning Baseline for Vision-Based Quadrotor Swarm Navigation”</b></div>
+                    <div class="comment"># G. Laudenzi, A. Roli, A. Kamimura, K. Tomita - Robotics and Autonomous Systems (Elsevier), 2026</div>
+                    <div>&nbsp;</div>
+                    <div>→ Reference impl: <a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL-airsim-sb3</a> <span class="hl" id="droneStars">93★</span> · 13 forks</div>
+                    <div>→ 2-, 3- and 5-drone swarms · static/dynamic/forest maps · <span class="num">90–95%</span> full-swarm success · sim2real over ROS</div>
+                    <div>→ Upstream PRs @ Farama Foundation: SuperSuit <a href="https://github.com/Farama-Foundation/SuperSuit/pull/268" target="_blank" rel="noopener">#268</a> <a href="https://github.com/Farama-Foundation/SuperSuit/pull/269" target="_blank" rel="noopener">#269</a> · PettingZoo <a href="https://github.com/Farama-Foundation/PettingZoo/pull/1406" target="_blank" rel="noopener">#1406</a></div>
+                </div>
+            </div>
+
+            <div class="block hidden-until-typed" style="display:none;">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd">./experience</span> <span class="flag">--all --reverse-chrono</span></div>
+                <div class="out">
+                    <div class="job-block">
+                        <div class="jr">Machine Learning Research Engineer <span class="comment">(contract)</span></div>
+                        <div class="jc">2025-04 → now · frontier AI training &amp; evals · <span class="warn">client under NDA</span></div>
+                        <ul>
+                            <li>Authored <span class="num">50+</span> RL environments, reviewed <span class="num">120+</span> - shaped rollout rewards anchored to naive &amp; expert baselines, calibrated so frontier agents fail them</li>
+                            <li>Extended <b>tau-bench</b> to new domains: interfaces of 20–30 APIs, 100 tasks each, verified against ground-truth call sequences</li>
+                            <li>Verifiable-reward optimization suite across <span class="num">25</span> domains (routing, scheduling, packing) - OR-Tools solvers as ground truth</li>
+                            <li>Adjudicated model-generated bug analyses blind: reproduced failing ML pipelines on GPU, scored root-cause claims</li>
+                            <li>Gold-medal chains for <span class="num">40</span> Kaggle/MLE-bench tasks → RAD &amp; CWM trajectories trained a client model on <span class="num">50×H100</span></li>
+                        </ul>
+                    </div>
+                    <div class="job-block">
+                        <div class="jr">Founder &amp; CEO</div>
+                        <div class="jc">2026-05 → now · TamaAI S.r.l.s. · Italy</div>
+                    </div>
+                    <div class="job-block">
+                        <div class="jr">AI Engineer</div>
+                        <div class="jc">2024-04 → now · Machine Learning Reply · Milan</div>
+                        <ul>
+                            <li>Brand-style image gen: <span class="num">$1,000</span>/photo → <span class="num">$0.10</span>/image @ 30% first-pass brand acceptance (multi-agent JSON prompt construction)</li>
+                            <li><b>LoRA, LoKr &amp; full fine-tuning</b> of Z-Image, Qwen-Image, Krea, Ideogram on a curated 300-image set - upscaled to print resolution</li>
+                            <li>Multimodal RAG (Azure image vector store) + Text-to-SQL · Terraform IaC · account lead (delivery, budget, team)</li>
+                            <li>Sketch → 2.5D → 3D meshes (TRELLIS 2, self-hosted H100) · <span class="num">100+</span> assets in pilot</li>
+                            <li>OCR receipt service rebuilt on GCP: template-free LLM extractor, extraction errors <span class="num">−30%</span></li>
+                        </ul>
+                    </div>
+                    <div class="job-block">
+                        <div class="jr">AI Engineer</div>
+                        <div class="jc">2023-10 → 2024-03 · AIDAPT S.r.l. · Ancona</div>
+                        <ul>
+                            <li>Fine-tuned open-source LLMs in Axolotl for text → knowledge-graph representation</li>
+                            <li>Production RAG service on LangChain + FAISS (Flask backend) · NeRF outlier clustering</li>
+                        </ul>
+                    </div>
+                    <div class="job-block">
+                        <div class="jr">Reinforcement Learning Researcher</div>
+                        <div class="jc">2023-04 → 2023-10 · AIST · Tsukuba, Japan</div>
+                        <ul>
+                            <li>Vision-based MARL for quadrotor swarms in UE4 + AirSim (SB3, PettingZoo, PPO/SAC) - the work behind research.md</li>
+                            <li>Patched SuperSuit's PettingZoo wrappers (stacked &amp; dict observations) · <span class="num">90–95%</span> swarm success · sim2real over ROS</li>
+                        </ul>
+                    </div>
+                    <div class="job-block">
+                        <div class="jr">ML Research Intern</div>
+                        <div class="jc">2019-08 → 2019-11 · AIST · Tsukuba, Japan · first of two appointments</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="block hidden-until-typed" style="display:none;">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd">ls</span> <span class="flag">-la</span> <span>projects/</span></div>
+                <div class="out">
+                    <table class="ls">
+                        <tr>
+                            <td class="perm">drwxr-xr-x</td>
+                            <td><a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL-airsim-sb3/</a><br><span class="comment"># MARL drone swarms - SB3, PettingZoo, AirSim, UE4</span></td>
+                            <td class="sz" id="ls-drone">93★</td>
+                        </tr>
+                        <tr>
+                            <td class="perm">drwxr-xr-x</td>
+                            <td><a href="https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning" target="_blank" rel="noopener">MCVRP-Multiple-Courier-Planning/</a><br><span class="comment"># CP, SMT &amp; MIP for courier routing</span></td>
+                            <td class="sz" id="ls-mcvrp">6★</td>
+                        </tr>
+                        <tr>
+                            <td class="perm">drwxr-xr-x</td>
+                            <td><a href="https://github.com/Lauqz/BlastPursuitMARL" target="_blank" rel="noopener">BlastPursuitMARL/</a><br><span class="comment"># Bomberman-style multi-agent RL environment</span></td>
+                            <td class="sz" id="ls-blast">4★</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="block hidden-until-typed" style="display:none;">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd">cat</span> <span>skills.yaml</span></div>
+                <div class="out">
+                    <div><span class="key">languages:</span> <span class="str">[Python, SQL, Bash]</span></div>
+                    <div><span class="key">ml_dl:</span> <span class="str">[PyTorch, JAX, TensorFlow, Transformers, Diffusers, PEFT, Axolotl]</span></div>
+                    <div><span class="key">rl_envs:</span> <span class="str">[Stable-Baselines3, PettingZoo, Gymnasium, PPO, SAC, reward_design, verifiable_rewards, sim2real]</span></div>
+                    <div><span class="key">llm_agents:</span> <span class="str">[SFT, LoRA, LoKr, RAG, tool_calling, tau-bench, MLE-bench, LangGraph, MCP]</span></div>
+                    <div><span class="key">generative_3d:</span> <span class="str">[StableDiffusion, FLUX, Qwen-Image, Z-Image, TRELLIS, Hunyuan3D, NeRF]</span></div>
+                    <div><span class="key">infra:</span> <span class="str">[Docker, Linux, Azure, GCP, Terraform, H100]</span></div>
+                    <div><span class="key">human:</span> <span class="str">{it: native, en: "C1 · IELTS 8.0", ja: "JLPT N5 → 頑張ってる"}</span></div>
+                </div>
+            </div>
+
+            <div class="block hidden-until-typed" style="display:none;">
+                <div class="prompt-line"><span class="u">guido@lab</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd">cat</span> <span>contact.txt</span></div>
+                <div class="out">
+                    <div>email    → <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a></div>
+                    <div>github   → <a href="https://github.com/Lauqz" target="_blank" rel="noopener">github.com/Lauqz</a></div>
+                    <div>linkedin → <a href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">linkedin.com/in/lauqzz</a></div>
+                    <div class="comment"># especially interested in RL environments, evals, agents - and anything in Japan</div>
+                </div>
+            </div>
+
+            <!-- live interactive prompt -->
+            <div class="block hidden-until-typed" style="display:none;" id="liveBlock">
+                <div class="comment"># This prompt is live - type a command or just ask a question.</div>
+                <div id="liveHistory"></div>
+                <div class="live-input-row">
+                    <span class="u">you@web</span><span class="p">~/portfolio</span><span>$</span>
+                    <input id="liveInput" type="text" autocomplete="off" spellcheck="false" aria-label="Terminal input">
+                </div>
+                <div class="hint-chips">
+                    <button data-q="help">help</button>
+                    <button data-q="why japan?">why japan?</button>
+                    <button data-q="who do you work for?">who do you work for?</button>
+                    <button data-q="tell me about the drone research">drone research</button>
+                    <button data-q="sudo hire guido">sudo hire guido</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ---- Boot: type "whoami", then reveal the session ----
+        const typedCmd = document.getElementById('typedCmd');
+        const typeCursor = document.getElementById('typeCursor');
+        const whoamiOut = document.getElementById('whoamiOut');
+        const blocks = document.querySelectorAll('.hidden-until-typed');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function revealAll() {
+            whoamiOut.style.display = '';
+            blocks.forEach((b, i) => {
+                setTimeout(() => { b.style.display = ''; }, reduceMotion ? 0 : 120 * (i + 1));
+            });
+            setTimeout(() => typeCursor.remove(), 200);
+        }
+
+        if (reduceMotion) {
+            typedCmd.textContent = 'whoami';
+            revealAll();
+        } else {
+            const cmd = 'whoami';
+            let i = 0;
+            (function typeNext() {
+                if (i < cmd.length) {
+                    typedCmd.textContent += cmd[i++];
+                    setTimeout(typeNext, 90 + Math.random() * 80);
+                } else {
+                    setTimeout(revealAll, 350);
+                }
+            })();
+        }
+
+        // ---- Live stars ----
+        fetch('./stats.json?' + Date.now()).then(r => r.json()).then(s => {
+            if (!s.stars) return;
+            const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = v + '★'; };
+            set('ls-drone', s.stars.drone); set('ls-mcvrp', s.stars.mcvrp); set('ls-blast', s.stars.blast);
+            if (s.stars.drone !== undefined) document.getElementById('droneStars').textContent = s.stars.drone + '★';
+        }).catch(() => {});
+
+        // ---- Interactive prompt (the "chatbot") ----
+        const liveInput = document.getElementById('liveInput');
+        const liveHistory = document.getElementById('liveHistory');
+
+        function respond(q) {
+            const s = q.toLowerCase().trim();
+            if (!s) return null;
+
+            if (s === 'help' || s === 'h' || s === '?') {
+                return `Available: <span class="key">whoami</span> · <span class="key">experience</span> · <span class="key">research</span> · <span class="key">projects</span> · <span class="key">skills</span> · <span class="key">education</span> · <span class="key">languages</span> · <span class="key">awards</span> · <span class="key">japan</span> · <span class="key">contact</span> · <span class="key">clear</span>\nOr just ask in plain English - try "what did you build at Reply?", "tell me about LoRA fine-tuning", "who do you work for?", "what is tau-bench?"`;
+            }
+            if (s === 'clear') { liveHistory.innerHTML = ''; return ''; }
+            if (s === 'whoami' || s.includes('who are you') || s.includes('about you') || s.includes('introduce')) {
+                return `Guido Laudenzi - <b>AI &amp; Research Engineer</b>.\nRL environments &amp; evaluations for frontier models · generative AI in production · multi-agent RL research (2× AIST Japan).\nM.Sc. AI @ UNIBO (<span class="num">110/110, GPA 4.0/4.0</span>) · Italy ❤️ Japan · open to opportunities.`;
+            }
+            if (s.includes('sudo')) {
+                return `<span class="warn">[sudo]</span> permission granted ✔\nInitiating hire sequence... → <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a>`;
+            }
+            if (s.includes('nda') || s.includes('client') || s.includes('who do you work') || s.includes('which company') || s.includes('what company') || s.includes('confidential') || s.includes('secret') || s.includes('frontier')) {
+                return `Current roles:\n· <b>ML Research Engineer</b> (contract) - frontier AI training &amp; evals. Client is <span class="hl">under NDA</span>: no names, sorry 🤐\n· <b>AI Engineer</b> @ Machine Learning Reply (Milan)\n· <b>Founder &amp; CEO</b> @ TamaAI S.r.l.s.\nThe NDA work itself is describable: RL environments, evaluations, verifiable rewards, post-training data. Ask about any of it.`;
+            }
+            if (s.includes('tamaai') || s.includes('founder') || s.includes('your company') || s.includes('ceo')) {
+                return `<b>TamaAI S.r.l.s.</b> - Guido's own AI company, founded 05/2026 in Italy.\nFounder &amp; CEO. If you want to work with him directly, this is the door: <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a>`;
+            }
+            if (s.includes('japan') || s.includes('aist') || s.includes('tsukuba') || s.includes('tokyo')) {
+                return `Two research appointments at <b>AIST</b> (National Institute of Advanced Industrial Science and Technology, Tsukuba):\n· <b>2023</b> - RL Researcher: vision-based MARL for drone swarms → became the paper + the 93★ repo\n· <b>2019</b> - ML Research Intern: CNNs/LSTMs for health signals, YOLO detection\nMaster's thesis carried out there ("Thesis Abroad" scholarship). Japanese: JLPT N5 and improving.\nItaly ❤️ Japan - opportunities there get priority routing.`;
+            }
+            if (s.includes('drone') || s.includes('swarm') || s.includes('marl') || s.includes('quadrotor') || s.includes('airsim')) {
+                return `Vision-based multi-agent RL for <b>decentralized quadrotor swarm navigation</b> (UE4 + AirSim, SB3, PettingZoo, PPO/SAC).\n· <span class="num">90–95%</span> full-swarm success across 2/3/5-drone swarms on static, dynamic &amp; forest maps\n· Initial sim2real transfer on hardware over ROS\n· Patched SuperSuit's wrappers for the vision observation space\nNow a paper under review @ <i>Robotics and Autonomous Systems</i> (Elsevier) + open-source baseline (93★, 13 forks).`;
+            }
+            if (s.includes('lora') || s.includes('lokr') || s.includes('fine-tun') || s.includes('finetun') || s.includes('sft') || s.includes('peft') || s.includes('axolotl')) {
+                return `Fine-tuning track record:\n· <b>LoRA, LoKr &amp; full fine-tunes</b> of Z-Image, Qwen-Image, Krea, Ideogram on a curated 300-image set, upscaled to print resolution (@ ML Reply)\n· SFT data &amp; agent trajectories (RAD one-shot, CWM incremental) for frontier post-training - client model trained on <span class="num">50×H100</span>\n· Open-source LLM fine-tuning in <b>Axolotl</b> for text → knowledge-graph representation (@ AIDAPT)\nStack: PEFT, Diffusers, Transformers, Axolotl.`;
+            }
+            if (s.includes('tau') || s.includes('mle-bench') || s.includes('mle bench') || s.includes('benchmark') || s.includes('eval')) {
+                return `Evaluations work (NDA client):\n· Extended <b>tau-bench</b> to new domains: interfaces of 20–30 APIs over a database, 100 tasks each, verified against ground-truth call sequences\n· <b>MLE-bench</b>: gold-medal solution chains for 40 Kaggle tasks, 5 baselines ranked worst → best so rejected directions stay legible\n· Verifiable-reward suite across <span class="num">25</span> optimization domains - OR-Tools solver as ground truth, verifier scoring model answers, generator for fresh instances\n· Blind adjudication of model-generated bug analyses, each reproduced on GPU`;
+            }
+            if (s.includes('reward') || s.includes('environment') || s.includes(' env') || s.startsWith('env') || s.includes('rl ')) {
+                return `RL environment design (frontier AI client, NDA):\n· <span class="num">50+</span> environments authored, <span class="num">120+</span> reviewed\n· Shaped rollout rewards anchored to naive &amp; ML-trained expert baselines\n· Difficulty calibrated so frontier agents fail them\n· Reward-hacking paths closed: solution files root-owned, agent runs unprivileged\nAlso: verifiable-reward data generation with OR-Tools across routing, scheduling, packing.`;
+            }
+            if (s.includes('reply') || s.includes('marazzi') || s.includes('tile') || s.includes('consult')) {
+                return `@ <b>Machine Learning Reply</b> (2024-04 → now, Milan):\n· Brand-style image generation: <span class="num">$1,000</span>/photo → <span class="num">$0.10</span>/image @ 30% first-pass brand acceptance, via multi-agent JSON prompt construction\n· LoRA/LoKr/full fine-tunes (Z-Image, Qwen-Image, Krea, Ideogram), print-res upscaling\n· Multimodal RAG over an Azure image vector store + Text-to-SQL · Terraform IaC\n· Sketch → 2.5D → 3D meshes (TRELLIS 2, self-hosted H100) - 100+ assets in pilot\n· OCR receipts on GCP: template-free LLM extractor, <span class="num">−30%</span> extraction errors\n· Account lead: delivery, timelines, budget, team`;
+            }
+            if (s.includes('aidapt') || s.includes('knowledge graph') || s.includes('ancona')) {
+                return `@ <b>AIDAPT S.r.l.</b> (2023-10 → 2024-03, Ancona):\n· Fine-tuned open-source LLMs in Axolotl for text → knowledge-graph representation\n· Shipped a production RAG service on LangChain + FAISS with a Flask backend\n· Built a clustering method to identify outliers in NeRF reconstructions`;
+            }
+            if (s.includes('experience') || s.includes('work') || s.includes('job') || s.includes('career') || s.includes('cv') || s.includes('resume')) {
+                return `2025-04 → <b>ML Research Engineer</b> (contract, NDA): 50+ RL envs · tau-bench · MLE-bench · verifiable rewards\n2026-05 → <b>Founder &amp; CEO</b> @ TamaAI S.r.l.s.\n2024-04 → <b>AI Engineer</b> @ Machine Learning Reply: generative AI in production, LoRA fine-tuning, multimodal RAG\n2023-10 → 2024-03 · <b>AI Engineer</b> @ AIDAPT: LLM fine-tuning, RAG, NeRF\n2023 + 2019 · <b>AIST Japan</b>: MARL research + ML internship\nFull detail: scroll up to <span class="key">./experience --all</span>, or ask about any single role.`;
+            }
+            if (s.includes('research') || s.includes('paper') || s.includes('publi') || s.includes('farama') || s.includes('supersuit') || s.includes('pettingzoo') || s.includes('open source') || s.includes('open-source')) {
+                return `📄 <b>"An End-to-End Multi-Agent RL Baseline for Vision-Based Quadrotor Swarm Navigation"</b> - G. Laudenzi, A. Roli, A. Kamimura, K. Tomita. Under review @ <i>Robotics and Autonomous Systems</i> (Elsevier), 2026.\n⭐ Reference implementation: <a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL-airsim-sb3</a> - 93★, 13 forks\n🔧 Open PRs to the <b>Farama Foundation</b>: Dict observation-space support in SuperSuit (#268, #269), environment listing in PettingZoo (#1406)`;
+            }
+            if (s.includes('skill') || s.includes('stack') || s.includes('tech') || s.includes('tool')) {
+                return `<b>RL/envs:</b> SB3, PettingZoo, SuperSuit, Gymnasium, PPO/SAC/QR-DQN, reward design, verifiable rewards, sim2real\n<b>LLMs/agents:</b> SFT/LoRA/LoKr, RAG, tool calling, tau-bench, MLE-bench, SciCode, LangChain, LangGraph, MCP, A2A\n<b>ML/DL:</b> PyTorch, JAX, TensorFlow, Transformers, Diffusers, PEFT, Axolotl\n<b>Generative/3D:</b> Stable Diffusion, FLUX, Qwen-Image, Z-Image, TRELLIS, Hunyuan3D, NeRF\n<b>Optimization:</b> OR-Tools, constraint programming\n<b>Infra:</b> Python, SQL, Bash, Docker, Linux, Azure, GCP, Terraform, H100 clusters`;
+            }
+            if (s.includes('project') || s.includes('github') || s.includes('repo')) {
+                return `<b>Drone-Swarm-RL-airsim-sb3</b> (93★, 13 forks) - MARL drone swarms, the paper's baseline\n<b>MCVRP</b> - courier planning with CP, SMT &amp; MIP\n<b>BlastPursuitMARL</b> - Bomberman-style multi-agent RL environment\n<span class="key">ls -la projects/</span> above, or <a href="https://github.com/Lauqz" target="_blank" rel="noopener">github.com/Lauqz</a>.`;
+            }
+            if (s.includes('education') || s.includes('degree') || s.includes('university') || s.includes('study') || s.includes('unibo') || s.includes('master') || s.includes('thesis')) {
+                return `<b>M.Sc. Artificial Intelligence</b> @ Università di Bologna - <span class="num">110/110, GPA 4.0/4.0</span>\nThesis: "Multi-agent Deep RL for Drone Swarms in static and dynamic environments" - carried out at AIST, Japan\n<b>B.Sc. Computer &amp; Automation Engineering</b> @ UNIVPM - thesis also at AIST, Japan\nBoth Japan placements funded by merit scholarships ("Thesis Abroad", "CampusWorld").`;
+            }
+            if (s.includes('language') || s.includes('speak') || s.includes('english') || s.includes('italian') || s.includes('japanese')) {
+                return `Italian - native\nEnglish - C1, IELTS 8.0\nJapanese - JLPT N5, in training 頑張ってる`;
+            }
+            if (s.includes('award') || s.includes('scholarship') || s.includes('achievement')) {
+                return `· Merit-based UNIBO <b>"Thesis Abroad"</b> scholarship - funded the Master's thesis research at AIST, Japan\n· Merit-based UNIVPM <b>"CampusWorld"</b> scholarship - funded the first AIST internship`;
+            }
+            if (s.includes('video') || s.includes('sora') || s.includes('veo')) {
+                return `Video generation for marketing content with <b>Sora</b> and <b>Veo</b>, plus a fabric-creation and virtual try-on closed loop (MidJourney, VTONs) - all @ ML Reply.`;
+            }
+            if (s.includes('3d') || s.includes('trellis') || s.includes('nerf') || s.includes('mesh')) {
+                return `Image-to-3D: pencil sketches → 2.5D concepts → <b>3D meshes</b> with TRELLIS 2 on a self-hosted H100 - 100+ assets, in pilot before a first production run.\nAlso: NeRF outlier detection via clustering (@ AIDAPT), Hunyuan3D.`;
+            }
+            if (s.includes('rag') || s.includes('llm') || s.includes('agent') || s.includes('mcp') || s.includes('langgraph') || s.includes('langchain')) {
+                return `Both sides of the agent stack:\n· <b>Building agents</b>: multimodal RAG (image vector stores), Text-to-SQL, LangChain/LangGraph, MCP, A2A\n· <b>Training &amp; measuring them</b>: RL environments, tau-bench extensions, verifiable rewards, ground-truth verifiers\nEnvironments ship as Docker containers exposing tools over a stdio MCP server - with reward-hacking paths closed by design.`;
+            }
+            if (s.includes('generative') || s.includes('diffusion') || s.includes('image') || s.includes('ocr')) {
+                return `Generative AI in production (@ ML Reply):\n· Brand-style image gen: $1,000/photo → <span class="num">$0.10</span>/image @ 30% first-pass acceptance\n· LoRA/LoKr/full fine-tunes of Z-Image, Qwen-Image, Krea, Ideogram · print-res upscaling\n· Sketch → 3D with TRELLIS 2 on H100 · video with Sora/Veo\n· OCR receipts: template-free LLM extractor on GCP, −30% errors`;
+            }
+            if (s.includes('contact') || s.includes('email') || s.includes('hire') || s.includes('reach') || s.includes('linkedin')) {
+                return `email → <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a>\nlinkedin → <a href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">linkedin.com/in/lauqzz</a>\ngithub → <a href="https://github.com/Lauqz" target="_blank" rel="noopener">github.com/Lauqz</a>\nPriority topics: RL environments · evals · agents · generative AI · Japan`;
+            }
+            return `command not found: <b>${q.replace(/</g, '&lt;')}</b>\nTry <span class="key">help</span>, or ask about: experience, research, fine-tuning, evals, projects, skills, education, japan, contact.`;
+        }
+
+        function runLive(q) {
+            const echo = document.createElement('div');
+            echo.className = 'prompt-line';
+            echo.style.marginTop = '10px';
+            echo.innerHTML = `<span class="u">you@web</span><span class="p">~/portfolio</span><span>$</span> <span class="cmd"></span>`;
+            echo.querySelector('.cmd').textContent = q;
+            liveHistory.appendChild(echo);
+
+            const answer = respond(q);
+            if (answer) {
+                const out = document.createElement('div');
+                out.className = 'out';
+                out.innerHTML = answer.replace(/\n/g, '<br>');
+                liveHistory.appendChild(out);
+            }
+            liveInput.value = '';
+            liveInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        liveInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && liveInput.value.trim()) runLive(liveInput.value);
+        });
+
+        document.querySelectorAll('.hint-chips button').forEach(btn => {
+            btn.addEventListener('click', () => runLive(btn.dataset.q));
+        });
+    </script>
+
+    <!-- ===== Designs switcher ===== -->
+    <div class="dsw" id="dsw">
+        <style>
+            .dsw-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 4001; display: inline-flex; align-items: center; gap: 8px; writing-mode: vertical-rl; padding: 15px 6px 15px 7px; font-family: 'Space Grotesk', 'JetBrains Mono', 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #5b566e; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(20, 18, 31, 0.1); border-left: none; border-radius: 0 11px 11px 0; cursor: pointer; transition: background .2s ease, color .2s ease, padding .2s ease; }
+            .dsw-tab:hover { background: rgba(255, 255, 255, 0.95); color: #14121f; padding-left: 10px; }
+            .dsw-tab .sp { background: linear-gradient(135deg, #8c52ff, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 13px; }
+            .dsw-shade { position: fixed; inset: 0; z-index: 3999; background: rgba(20, 18, 31, 0.18); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+            .dsw.open .dsw-shade { opacity: 1; pointer-events: auto; }
+            .dsw-panel { position: fixed; top: 0; left: 0; bottom: 0; z-index: 4000; width: min(280px, 82vw); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid rgba(20, 18, 31, 0.08); box-shadow: 24px 0 50px -24px rgba(20, 18, 31, 0.35); transform: translateX(-102%); transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1); overflow-y: auto; overscroll-behavior: contain; }
+            .dsw.open .dsw-panel { transform: translateX(0); }
+            .dsw-head { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8aa8; padding: 18px 18px 4px; }
+            .dsw-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 18px; }
+            .dsw-card { text-decoration: none !important; border: 1px solid #e6e3ef; border-radius: 13px; padding: 12px 14px; background: #fff; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+            .dsw-card:hover { transform: translateX(3px); border-color: #c9bcf5; box-shadow: 0 10px 24px -12px rgba(109, 90, 230, 0.4); }
+            .dsw-card i { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; font-style: normal; color: #8c52ff; letter-spacing: 0.1em; margin-bottom: 5px; }
+            .dsw-card b { display: block; font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; color: #14121f; margin-bottom: 3px; }
+            .dsw-card span { display: block; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #7b7690; }
+            .dsw-card.cur { border-color: #8c52ff; background: #f6f2ff; }
+            .dsw-card.cur i::after { content: '  b7 here'; color: #b7a5f2; }
+            @media (prefers-reduced-motion: reduce) { .dsw-panel, .dsw-shade, .dsw-tab { transition: none; } }
+            @media print { .dsw { display: none; } }
+        </style>
+        <div class="dsw-shade" id="dswShade"></div>
+        <nav class="dsw-panel" id="dswMenu" aria-label="Design variants">
+            <div class="dsw-head">&#10022; designs</div>
+            <div class="dsw-row">
+                <a class="dsw-card" href="index.html"><i>00</i><b>Entry</b><span>the minimal front door</span></a>
+                <a class="dsw-card" href="alt-terminal.html"><i>01</i><b>Terminal</b><span>the CV as a live shell session</span></a>
+                <a class="dsw-card" href="alt-experiment.html"><i>02</i><b>TrainRun</b><span>career as an experiment tracker</span></a>
+                <a class="dsw-card" href="alt-gridworld.html"><i>03</i><b>Gridworld</b><span>an RL episode: explore, collect reward</span></a>
+                <a class="dsw-card" href="alt-mission.html"><i>04</i><b>Mission</b><span>drone mission control, live swarm</span></a>
+                <a class="dsw-card" href="alt-chat.html"><i>05</i><b>Chat</b><span>the CV as an AI conversation</span></a>
+                <a class="dsw-card" href="alt-diffusion.html"><i>06</i><b>Denoise</b><span>a portfolio out of pure noise</span></a>
+                <a class="dsw-card" href="alt-os.html"><i>07</i><b>GuidoOS</b><span>a tiny desktop operating system</span></a>
+                <a class="dsw-card" href="alt-hearts.html"><i>08</i><b>Kingdom</b><span>a certain beloved opening menu</span></a>
+            </div>
+        </nav>
+        <button class="dsw-tab" id="dswBtn" aria-expanded="false" aria-haspopup="true"><span class="sp">&#10022;</span><span>designs</span></button>
+        <script>
+            (function () {
+                var dsw = document.getElementById('dsw');
+                var btn = document.getElementById('dswBtn');
+                var shade = document.getElementById('dswShade');
+                function setOpen(v) { dsw.classList.toggle('open', v); btn.setAttribute('aria-expanded', v); }
+                btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!dsw.classList.contains('open')); });
+                shade.addEventListener('click', function () { setOpen(false); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+                var here = location.pathname.split('/').pop() || 'index.html';
+                var cards = dsw.querySelectorAll('.dsw-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('href') === here) cards[i].classList.add('cur');
+                }
+            })();
+        </script>
+    </div>
+
+</body>
+</html>

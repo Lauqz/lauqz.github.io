@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>guido.safetensors - denoising a portfolio</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #faf9fc;
+            --panel: #ffffff;
+            --ink: #17141f;
+            --soft: #4c4659;
+            --muted: #8a8496;
+            --line: #e7e3ee;
+            --violet: #7c3aed;
+            --pink: #db2777;
+            --cyan: #0891b2;
+            --amber: #b45309;
+            --grad: linear-gradient(100deg, #7c3aed, #db2777 60%, #f59e0b);
+            --sans: 'Space Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--sans);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        ::selection { background: var(--violet); color: #fff; }
+
+        /* film grain - fades out as the "generation" completes */
+        #grain {
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            pointer-events: none;
+            opacity: 0.5;
+            mix-blend-mode: multiply;
+        }
+
+        /* ---------- Generation bar ---------- */
+        .genbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(250, 249, 252, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .genbar-inner {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--soft);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .genbar .spin {
+            width: 14px; height: 14px;
+            border: 2px solid var(--line);
+            border-top-color: var(--violet);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .genbar .prompt-txt b { color: var(--ink); }
+        .genbar .t-read { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .genbar .t-val { font-weight: 700; color: var(--violet); min-width: 74px; text-align: right; }
+
+        .genbar .prog {
+            width: 130px; height: 6px;
+            background: var(--line);
+            border-radius: 3px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .genbar .prog i {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: var(--grad);
+            border-radius: 3px;
+            transition: width 0.2s linear;
+        }
+
+        .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+
+        /* ---------- Denoise reveal ---------- */
+        .df {
+            filter: blur(18px) saturate(0.2);
+            opacity: 0.45;
+            transform: scale(0.985);
+            transition: filter 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+                        opacity 1.1s ease,
+                        transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: filter, opacity;
+        }
+
+        .df.sharp {
+            filter: blur(0) saturate(1);
+            opacity: 1;
+            transform: none;
+        }
+
+        .step-label {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            text-transform: lowercase;
+        }
+
+        .step-label::before { content: ''; width: 26px; height: 2px; background: var(--grad); }
+        .step-label b { color: var(--violet); }
+
+        section { padding: 64px 0; }
+
+        h2 {
+            font-size: clamp(26px, 3.6vw, 42px);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 26px;
+        }
+
+        h2 .g { background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* ---------- Hero ---------- */
+        .hero { padding: 90px 0 60px; text-align: left; }
+
+        .hero .neg {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .hero .neg s { color: #c5bfd2; }
+
+        h1 {
+            font-size: clamp(44px, 8vw, 104px);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            line-height: 0.95;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        h1 .g { background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .hero-sub {
+            font-size: clamp(16px, 2vw, 19px);
+            color: var(--soft);
+            max-width: 680px;
+            margin-bottom: 28px;
+        }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+
+        .chip {
+            font-family: var(--mono);
+            font-size: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: var(--soft);
+        }
+
+        .chip.hot { border-color: transparent; background: var(--grad); color: #fff; font-weight: 700; }
+
+        /* ---------- Cards ---------- */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 26px;
+            box-shadow: 0 2px 10px -6px rgba(23, 20, 31, 0.1);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -18px rgba(124, 58, 237, 0.3); }
+        .card h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
+        .card p { font-size: 14px; color: var(--soft); }
+
+        .badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            padding: 4px 11px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+        }
+
+        .badge.amber { background: #fdf3e3; color: var(--amber); }
+        .badge.violet { background: #f1eafd; color: var(--violet); }
+        .badge.pink { background: #fcE9f2; color: var(--pink); }
+        .badge.cyan { background: #e3f5f9; color: var(--cyan); }
+
+        .grid-2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .stack { display: grid; gap: 18px; }
+
+        .fine { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 12px; }
+        a.plain { text-decoration: none; color: inherit; display: block; }
+        .card a { color: var(--violet); font-weight: 600; text-decoration: none; }
+        .card a:hover { text-decoration: underline; }
+        .stars { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--amber); }
+
+        /* career rows */
+        .row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 20px;
+            padding: 22px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .row:last-child { border-bottom: none; }
+        .row .date { font-family: var(--mono); font-size: 11.5px; color: var(--muted); padding-top: 4px; }
+        .row .role { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+        .row .org { font-family: var(--mono); font-size: 11.5px; color: var(--violet); margin: 2px 0 10px; }
+        .row ul { list-style: none; }
+
+        .row li {
+            font-size: 14px;
+            color: var(--soft);
+            padding: 3px 0 3px 20px;
+            position: relative;
+        }
+
+        .row li::before {
+            content: '◆';
+            position: absolute;
+            left: 0;
+            font-size: 8px;
+            top: 9px;
+            background: var(--grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .row li b { color: var(--ink); }
+
+        /* skills */
+        .skill-band { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 18px; }
+        .skill-cat { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+
+        /* contact */
+        .final-card {
+            text-align: center;
+            padding: 60px 30px;
+            border-radius: 24px;
+            background:
+                radial-gradient(ellipse 80% 100% at 20% 0%, rgba(124, 58, 237, 0.08), transparent 55%),
+                radial-gradient(ellipse 80% 100% at 85% 100%, rgba(219, 39, 119, 0.07), transparent 55%),
+                var(--panel);
+            border: 1px solid var(--line);
+        }
+
+        .final-card .done-tag {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: #059669;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .final-card h2 { margin-bottom: 10px; }
+        .final-card p { color: var(--soft); max-width: 500px; margin: 0 auto 26px; }
+
+        .btns { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14.5px;
+            padding: 13px 26px;
+            border-radius: 14px;
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+        .btn.primary { background: var(--grad); color: #fff; box-shadow: 0 10px 26px -10px rgba(219, 39, 119, 0.5); }
+        .btn.ghost { background: var(--panel); border: 1px solid var(--line); color: var(--ink); }
+
+        footer {
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            padding: 30px 0 90px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .row { grid-template-columns: 1fr; gap: 6px; }
+        }
+
+        @media (max-width: 620px) {
+            .wrap { padding: 0 18px; }
+            .btn { width: 100%; justify-content: center; }
+            .genbar .prompt-txt { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .df { filter: none; opacity: 1; transform: none; transition: none; }
+            #grain { display: none; }
+            .genbar .spin { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="grain" aria-hidden="true"></canvas>
+
+    <div class="genbar">
+        <div class="genbar-inner">
+            <span class="spin" id="spinner"></span>
+            <span class="prompt-txt">prompt: <b>"wide, professional portfolio of an AI &amp; research engineer, masterpiece"</b> · neg: "dark theme, narrow column" · seed 1996 · cfg 7.5</span>
+            <span class="t-read">
+                <span class="prog"><i id="progBar"></i></span>
+                <span class="t-val" id="tVal">t = 1000</span>
+            </span>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <!-- ============ HERO ============ -->
+        <header class="hero df">
+            <div class="neg">sampler: DPM++ 2M · steps: scroll · <s>--no risk</s> --allow emergent_behavior</div>
+            <h1>From noise<br><span class="g">to signal.</span></h1>
+            <p class="hero-sub">
+                <b>Guido Laudenzi</b> - AI &amp; Research Engineer. I design the RL environments and evaluations frontier models train against, ship generative AI that survives production, and published my way there through multi-agent RL research at AIST Japan. Keep scrolling - the portfolio denoises.
+            </p>
+            <div class="chips">
+                <span class="chip hot">Multi-agent RL</span>
+                <span class="chip hot">LLM Agents</span>
+                <span class="chip hot">Environments &amp; Evals</span>
+                <span class="chip hot">Generative AI</span>
+                <span class="chip">Italy ❤️ Japan</span>
+                <span class="chip">M.Sc. AI · 110/110 · GPA 4.0</span>
+            </div>
+        </header>
+
+        <!-- ============ RESEARCH ============ -->
+        <section class="df">
+            <div class="step-label">step <b>01/05</b> · denoising: research &amp; open source</div>
+            <h2>The <span class="g">signal</span> underneath</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <span class="badge amber">📄 Under review · Elsevier 2026</span>
+                    <h3>An End-to-End Multi-Agent Reinforcement Learning Baseline for Vision-Based Quadrotor Swarm Navigation</h3>
+                    <p>Design, implementation and emergent behavior analysis. 90–95% full-swarm success across 2/3/5-drone swarms on static, dynamic and forest maps; initial sim2real over ROS.</p>
+                    <div class="fine">G. LAUDENZI · A. ROLI · A. KAMIMURA · K. TOMITA - ROBOTICS AND AUTONOMOUS SYSTEMS</div>
+                </div>
+                <div class="stack">
+                    <a class="plain" href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">
+                        <div class="card">
+                            <span class="badge violet">⭐ Reference implementation</span>
+                            <h3>Drone-Swarm-RL-airsim-sb3 <span class="stars" id="d-drone">★ 93</span></h3>
+                            <p>SB3 · PettingZoo · AirSim · UE4 - the paper's open-source baseline.</p>
+                        </div>
+                    </a>
+                    <div class="card">
+                        <span class="badge cyan">🔧 Upstream · Farama Foundation</span>
+                        <p>SuperSuit <a href="https://github.com/Farama-Foundation/SuperSuit/pull/268" target="_blank" rel="noopener">#268</a> <a href="https://github.com/Farama-Foundation/SuperSuit/pull/269" target="_blank" rel="noopener">#269</a> (Dict observation spaces) · PettingZoo <a href="https://github.com/Farama-Foundation/PettingZoo/pull/1406" target="_blank" rel="noopener">#1406</a> (environment listing)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ CAREER ============ -->
+        <section class="df">
+            <div class="step-label">step <b>02/05</b> · denoising: career</div>
+            <h2>Six checkpoints, <span class="g">no collapse</span></h2>
+            <div class="card" style="padding: 8px 26px;">
+                <div class="row">
+                    <div class="date">04/2025 - now</div>
+                    <div>
+                        <div class="role">Machine Learning Research Engineer</div>
+                        <div class="org">frontier AI training &amp; evals · client under NDA 🤐</div>
+                        <ul>
+                            <li>Authored <b>50+ RL environments</b>, reviewed <b>120+</b> - shaped rewards anchored to naive &amp; expert baselines, calibrated so frontier agents fail them</li>
+                            <li>Extended <b>tau-bench</b>: 20–30-API interfaces, 100 tasks each, verified against ground-truth call sequences</li>
+                            <li>Verifiable-reward suite across <b>25 domains</b> (OR-Tools ground truth) · blind bug adjudication on GPU</li>
+                            <li>Gold-medal chains for <b>40 Kaggle/MLE-bench tasks</b> → client model trained on <b>50×H100</b></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="date">05/2026 - now</div>
+                    <div>
+                        <div class="role">Founder &amp; CEO</div>
+                        <div class="org">TamaAI S.r.l.s. · Italy</div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="date">04/2024 - now</div>
+                    <div>
+                        <div class="role">AI Engineer</div>
+                        <div class="org">Machine Learning Reply · Milan</div>
+                        <ul>
+                            <li>Brand-style image generation: <b>$1,000/photo → $0.10/image</b> at 30% first-pass brand acceptance</li>
+                            <li><b>LoRA, LoKr &amp; full fine-tuning</b> of Z-Image, Qwen-Image, Krea, Ideogram - print-resolution upscale</li>
+                            <li>Multimodal RAG (Azure image vector store) + Text-to-SQL · Terraform · account lead</li>
+                            <li>Sketch → 2.5D → <b>3D meshes</b> (TRELLIS 2, self-hosted H100) - 100+ assets in pilot</li>
+                            <li>OCR receipts on GCP: template-free LLM extractor, <b>−30%</b> extraction errors</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="date">10/2023 - 03/2024</div>
+                    <div>
+                        <div class="role">AI Engineer</div>
+                        <div class="org">AIDAPT S.r.l. · Ancona</div>
+                        <ul>
+                            <li>LLM fine-tuning in Axolotl (text → knowledge graphs) · production RAG on LangChain + FAISS · NeRF outlier clustering</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="date">04/2023 - 10/2023</div>
+                    <div>
+                        <div class="role">RL Researcher</div>
+                        <div class="org">AIST · Tsukuba, Japan</div>
+                        <ul>
+                            <li>Vision-based MARL for quadrotor swarms (UE4 + AirSim, SB3, PettingZoo) - the research above</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="date">08/2019 - 11/2019</div>
+                    <div>
+                        <div class="role">ML Research Intern</div>
+                        <div class="org">AIST · Tsukuba, Japan · first of two appointments</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ PROJECTS ============ -->
+        <section class="df">
+            <div class="step-label">step <b>03/05</b> · denoising: open source</div>
+            <h2>Sampled <span class="g">artifacts</span></h2>
+            <div class="grid-3">
+                <a class="plain" href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">
+                    <div class="card">
+                        <span class="badge violet">🚁 MARL</span>
+                        <h3>Drone-Swarm-RL <span class="stars" id="p-drone">★ 93</span></h3>
+                        <p>Vision-based drone swarms - UE4, AirSim, SB3, PettingZoo.</p>
+                    </div>
+                </a>
+                <a class="plain" href="https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning" target="_blank" rel="noopener">
+                    <div class="card">
+                        <span class="badge pink">📦 Optimization</span>
+                        <h3>MCVRP <span class="stars" id="p-mcvrp">★ 6</span></h3>
+                        <p>Courier planning with CP, SMT and MIP.</p>
+                    </div>
+                </a>
+                <a class="plain" href="https://github.com/Lauqz/BlastPursuitMARL" target="_blank" rel="noopener">
+                    <div class="card">
+                        <span class="badge cyan">💣 Environment</span>
+                        <h3>BlastPursuitMARL <span class="stars" id="p-blast">★ 4</span></h3>
+                        <p>Bomberman-style multi-agent RL environment.</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- ============ SKILLS ============ -->
+        <section class="df">
+            <div class="step-label">step <b>04/05</b> · denoising: toolbox</div>
+            <h2>Learned <span class="g">weights</span></h2>
+            <div class="card">
+                <div class="skill-cat">RL &amp; environments</div>
+                <div class="skill-band"><span class="chip">Stable-Baselines3</span><span class="chip">PettingZoo</span><span class="chip">Gymnasium</span><span class="chip">PPO / SAC / QR-DQN</span><span class="chip">Reward design</span><span class="chip">Verifiable rewards</span><span class="chip">sim2real</span></div>
+                <div class="skill-cat">LLMs &amp; agents</div>
+                <div class="skill-band"><span class="chip">SFT / LoRA / LoKr</span><span class="chip">RAG</span><span class="chip">Tool calling</span><span class="chip">tau-bench</span><span class="chip">MLE-bench</span><span class="chip">LangGraph</span><span class="chip">MCP</span></div>
+                <div class="skill-cat">Generative &amp; 3D</div>
+                <div class="skill-band"><span class="chip">Stable Diffusion</span><span class="chip">FLUX</span><span class="chip">Qwen-Image</span><span class="chip">Z-Image</span><span class="chip">TRELLIS</span><span class="chip">Hunyuan3D</span><span class="chip">NeRF</span></div>
+                <div class="skill-cat">Core &amp; infrastructure</div>
+                <div class="skill-band"><span class="chip">Python</span><span class="chip">PyTorch</span><span class="chip">JAX</span><span class="chip">OR-Tools</span><span class="chip">Docker</span><span class="chip">Linux</span><span class="chip">Azure</span><span class="chip">GCP</span><span class="chip">Terraform</span><span class="chip">H100</span></div>
+            </div>
+        </section>
+
+        <!-- ============ CONTACT ============ -->
+        <section class="df" id="contact">
+            <div class="step-label">step <b>05/05</b> · final step</div>
+            <div class="final-card">
+                <div class="done-tag" id="doneTag">◌ finishing generation…</div>
+                <h2>Generation <span class="g">complete</span></h2>
+                <p>The signal was a person all along. RL environments, evals, LLM agents, generative AI - or anything in Japan.</p>
+                <div class="btns">
+                    <a class="btn primary" href="mailto:guido.laudenzi@libero.it">✉ guido.laudenzi@libero.it</a>
+                    <a class="btn ghost" href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">LinkedIn ↗</a>
+                    <a class="btn ghost" href="https://github.com/Lauqz" target="_blank" rel="noopener">GitHub ↗</a>
+                </div>
+            </div>
+        </section>
+
+        <footer>© 2026 guido laudenzi · no humans were diffused in the making of this page · updated 2026.07</footer>
+    </div>
+
+    <!-- ===== Designs switcher ===== -->
+    <div class="dsw" id="dsw">
+        <style>
+            .dsw-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 4001; display: inline-flex; align-items: center; gap: 8px; writing-mode: vertical-rl; padding: 15px 6px 15px 7px; font-family: 'Space Grotesk', 'JetBrains Mono', 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #5b566e; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(20, 18, 31, 0.1); border-left: none; border-radius: 0 11px 11px 0; cursor: pointer; transition: background .2s ease, color .2s ease, padding .2s ease; }
+            .dsw-tab:hover { background: rgba(255, 255, 255, 0.95); color: #14121f; padding-left: 10px; }
+            .dsw-tab .sp { background: linear-gradient(135deg, #8c52ff, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 13px; }
+            .dsw-shade { position: fixed; inset: 0; z-index: 3999; background: rgba(20, 18, 31, 0.18); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+            .dsw.open .dsw-shade { opacity: 1; pointer-events: auto; }
+            .dsw-panel { position: fixed; top: 0; left: 0; bottom: 0; z-index: 4000; width: min(280px, 82vw); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid rgba(20, 18, 31, 0.08); box-shadow: 24px 0 50px -24px rgba(20, 18, 31, 0.35); transform: translateX(-102%); transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1); overflow-y: auto; overscroll-behavior: contain; }
+            .dsw.open .dsw-panel { transform: translateX(0); }
+            .dsw-head { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8aa8; padding: 18px 18px 4px; }
+            .dsw-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 18px; }
+            .dsw-card { text-decoration: none !important; border: 1px solid #e6e3ef; border-radius: 13px; padding: 12px 14px; background: #fff; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+            .dsw-card:hover { transform: translateX(3px); border-color: #c9bcf5; box-shadow: 0 10px 24px -12px rgba(109, 90, 230, 0.4); }
+            .dsw-card i { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; font-style: normal; color: #8c52ff; letter-spacing: 0.1em; margin-bottom: 5px; }
+            .dsw-card b { display: block; font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; color: #14121f; margin-bottom: 3px; }
+            .dsw-card span { display: block; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #7b7690; }
+            .dsw-card.cur { border-color: #8c52ff; background: #f6f2ff; }
+            .dsw-card.cur i::after { content: '  b7 here'; color: #b7a5f2; }
+            @media (prefers-reduced-motion: reduce) { .dsw-panel, .dsw-shade, .dsw-tab { transition: none; } }
+            @media print { .dsw { display: none; } }
+        </style>
+        <div class="dsw-shade" id="dswShade"></div>
+        <nav class="dsw-panel" id="dswMenu" aria-label="Design variants">
+            <div class="dsw-head">&#10022; designs</div>
+            <div class="dsw-row">
+                <a class="dsw-card" href="index.html"><i>00</i><b>Entry</b><span>the minimal front door</span></a>
+                <a class="dsw-card" href="alt-terminal.html"><i>01</i><b>Terminal</b><span>the CV as a live shell session</span></a>
+                <a class="dsw-card" href="alt-experiment.html"><i>02</i><b>TrainRun</b><span>career as an experiment tracker</span></a>
+                <a class="dsw-card" href="alt-gridworld.html"><i>03</i><b>Gridworld</b><span>an RL episode: explore, collect reward</span></a>
+                <a class="dsw-card" href="alt-mission.html"><i>04</i><b>Mission</b><span>drone mission control, live swarm</span></a>
+                <a class="dsw-card" href="alt-chat.html"><i>05</i><b>Chat</b><span>the CV as an AI conversation</span></a>
+                <a class="dsw-card" href="alt-diffusion.html"><i>06</i><b>Denoise</b><span>a portfolio out of pure noise</span></a>
+                <a class="dsw-card" href="alt-os.html"><i>07</i><b>GuidoOS</b><span>a tiny desktop operating system</span></a>
+                <a class="dsw-card" href="alt-hearts.html"><i>08</i><b>Kingdom</b><span>a certain beloved opening menu</span></a>
+            </div>
+        </nav>
+        <button class="dsw-tab" id="dswBtn" aria-expanded="false" aria-haspopup="true"><span class="sp">&#10022;</span><span>designs</span></button>
+        <script>
+            (function () {
+                var dsw = document.getElementById('dsw');
+                var btn = document.getElementById('dswBtn');
+                var shade = document.getElementById('dswShade');
+                function setOpen(v) { dsw.classList.toggle('open', v); btn.setAttribute('aria-expanded', v); }
+                btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!dsw.classList.contains('open')); });
+                shade.addEventListener('click', function () { setOpen(false); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+                var here = location.pathname.split('/').pop() || 'index.html';
+                var cards = dsw.querySelectorAll('.dsw-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('href') === here) cards[i].classList.add('cur');
+                }
+            })();
+        </script>
+    </div>
+
+    <script>
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ---- Film grain canvas ----
+        const grain = document.getElementById('grain');
+        const gctx = grain.getContext('2d');
+        const TILE = 140;
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = TILE;
+        const tctx = tile.getContext('2d');
+
+        function drawNoiseTile() {
+            const img = tctx.createImageData(TILE, TILE);
+            for (let i = 0; i < img.data.length; i += 4) {
+                const v = 190 + Math.random() * 65;
+                img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+                img.data[i + 3] = 255;
+            }
+            tctx.putImageData(img, 0, 0);
+        }
+
+        function sizeGrain() {
+            grain.width = window.innerWidth;
+            grain.height = window.innerHeight;
+        }
+        sizeGrain();
+        window.addEventListener('resize', sizeGrain);
+
+        function paintGrain() {
+            drawNoiseTile();
+            const pat = gctx.createPattern(tile, 'repeat');
+            gctx.clearRect(0, 0, grain.width, grain.height);
+            gctx.fillStyle = pat;
+            gctx.fillRect(0, 0, grain.width, grain.height);
+        }
+
+        if (!reduceMotion) {
+            paintGrain();
+            setInterval(paintGrain, 140);
+        }
+
+        // ---- Scroll = denoising ----
+        const tVal = document.getElementById('tVal');
+        const progBar = document.getElementById('progBar');
+        const spinner = document.getElementById('spinner');
+        const doneTag = document.getElementById('doneTag');
+
+        function onScroll() {
+            const max = document.documentElement.scrollHeight - window.innerHeight;
+            const p = max > 0 ? Math.min(1, window.scrollY / max) : 1;
+            const t = Math.round((1 - p) * 1000);
+            tVal.textContent = t === 0 ? '✓ done' : 't = ' + t;
+            progBar.style.width = (p * 100) + '%';
+            grain.style.opacity = (0.5 * (1 - p) + 0.02).toFixed(3);
+            if (t === 0) {
+                spinner.style.animationPlayState = 'paused';
+                spinner.style.borderTopColor = '#059669';
+                doneTag.textContent = '✓ generated in 7.2s · 1000/1000 steps';
+            }
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        // ---- Per-section denoise reveal ----
+        if (!reduceMotion && 'IntersectionObserver' in window) {
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) { e.target.classList.add('sharp'); io.unobserve(e.target); }
+                });
+            }, { threshold: 0.12 });
+            document.querySelectorAll('.df').forEach(el => io.observe(el));
+        } else {
+            document.querySelectorAll('.df').forEach(el => el.classList.add('sharp'));
+        }
+
+        // ---- Live stars ----
+        fetch('./stats.json?' + Date.now()).then(r => r.json()).then(s => {
+            if (!s.stars) return;
+            const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = '★ ' + v; };
+            set('d-drone', s.stars.drone); set('p-drone', s.stars.drone);
+            set('p-mcvrp', s.stars.mcvrp); set('p-blast', s.stars.blast);
+        }).catch(() => {});
+    </script>
+</body>
+</html>

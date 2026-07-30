@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MISSION CONTROL - Callsign LAUQZ</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sky: #e9f1f6;
+            --paper: #f6fafc;
+            --navy: #0b3a5e;
+            --ink: #12293c;
+            --soft: #3d5a72;
+            --muted: #7d95a8;
+            --line: #c8d9e5;
+            --cyan: #0891b2;
+            --signal: #e8590c;
+            --lime: #2f9e44;
+            --sans: 'Space Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background:
+                radial-gradient(circle at 80% -10%, rgba(8, 145, 178, 0.10), transparent 45%),
+                radial-gradient(circle at 5% 40%, rgba(232, 89, 12, 0.05), transparent 40%),
+                linear-gradient(to right, rgba(11, 58, 94, 0.055) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(11, 58, 94, 0.055) 1px, transparent 1px),
+                var(--sky);
+            background-size: auto, auto, 48px 48px, 48px 48px, auto;
+            color: var(--ink);
+            font-family: var(--sans);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        ::selection { background: var(--cyan); color: #fff; }
+
+        /* boids canvas behind content */
+        #swarm {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .wrap { max-width: 1120px; margin: 0 auto; padding: 0 26px; position: relative; z-index: 1; }
+
+        /* ---------- Top status strip ---------- */
+        .strip {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: var(--navy);
+            color: #cfe3f2;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            letter-spacing: 0.04em;
+        }
+
+        .strip-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 9px 26px;
+            display: flex;
+            gap: 22px;
+            align-items: center;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .strip b { color: #fff; }
+        .strip .ok { color: #74e39a; }
+        .strip .right { margin-left: auto; display: flex; gap: 16px; }
+        .strip a { color: #9fd4ee; text-decoration: none; }
+        .strip a:hover { color: #fff; }
+
+        .blink { animation: blink 1.6s steps(1) infinite; }
+        @keyframes blink { 50% { opacity: 0.25; } }
+
+        /* ---------- Hero ---------- */
+        .hero { padding: 88px 0 56px; }
+
+        .callsign {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .callsign::before { content: ''; width: 34px; height: 2px; background: var(--cyan); }
+
+        h1 {
+            font-size: clamp(38px, 6.4vw, 76px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.0;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+        }
+
+        h1 .thin { color: transparent; -webkit-text-stroke: 1.6px var(--navy); }
+
+        .hero-brief {
+            max-width: 660px;
+            color: var(--soft);
+            font-size: clamp(15.5px, 1.8vw, 18px);
+            margin-bottom: 28px;
+        }
+
+        .telemetry {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(130px, 1fr));
+            gap: 1px;
+            background: var(--line);
+            border: 1.5px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 720px;
+            margin-bottom: 30px;
+        }
+
+        .tele-cell { background: var(--paper); padding: 14px 16px; }
+        .tele-cell .tl { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+        .tele-cell .tv { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--navy); }
+        .tele-cell .tv small { font-size: 12px; color: var(--muted); }
+
+        .btn-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
+        .mbtn {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            text-decoration: none;
+            padding: 12px 22px;
+            border-radius: 8px;
+            border: 1.5px solid var(--navy);
+            color: var(--navy);
+            background: var(--paper);
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mbtn:hover { background: var(--navy); color: #fff; }
+        .mbtn.primary { background: var(--navy); color: #fff; }
+        .mbtn.primary:hover { background: var(--cyan); border-color: var(--cyan); }
+
+        /* ---------- Waypoint sections ---------- */
+        .route { position: relative; padding-bottom: 40px; }
+
+        .route::before {
+            content: '';
+            position: absolute;
+            left: 21px;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed var(--cyan);
+            opacity: 0.55;
+        }
+
+        .wp { position: relative; padding: 34px 0 34px 66px; }
+
+        .wp-marker {
+            position: absolute;
+            left: 0;
+            top: 44px;
+            width: 44px;
+            height: 44px;
+            background: var(--paper);
+            border: 2px solid var(--navy);
+            transform: rotate(45deg);
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 4px 14px -4px rgba(11, 58, 94, 0.3);
+        }
+
+        .wp-marker span {
+            transform: rotate(-45deg);
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .wp.reached .wp-marker { background: var(--navy); }
+        .wp.reached .wp-marker span { color: #fff; }
+
+        .wp-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+
+        .wp-head h2 {
+            font-size: clamp(22px, 3vw, 32px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+        }
+
+        .wp-head .wp-code { font-family: var(--mono); font-size: 11.5px; color: var(--cyan); letter-spacing: 0.14em; }
+        .wp-sub { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+        /* ---------- Panels ---------- */
+        .console {
+            background: var(--paper);
+            border: 1.5px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px -18px rgba(11, 58, 94, 0.35);
+            overflow: hidden;
+        }
+
+        .console-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            padding: 10px 18px;
+            border-bottom: 1.5px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .console-body { padding: 20px; }
+
+        .stamp {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 5px;
+        }
+
+        .stamp.orange { background: #fdeee2; color: var(--signal); }
+        .stamp.green { background: #e4f4e8; color: var(--lime); }
+        .stamp.blue { background: #e0f2f8; color: var(--cyan); }
+
+        .console h3 { font-size: 17.5px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
+        .console p { font-size: 14px; color: var(--soft); }
+        .console .fine { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 12px; }
+
+        .duo { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+        .col-gap { display: grid; gap: 18px; }
+        .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+        a.plain { color: inherit; text-decoration: none; display: block; }
+        .console a { color: var(--cyan); font-weight: 600; text-decoration: none; }
+        .console a:hover { text-decoration: underline; }
+
+        .hoverable { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .hoverable:hover { transform: translateY(-3px); box-shadow: 0 16px 36px -16px rgba(11, 58, 94, 0.45); }
+
+        /* Flight log (experience) */
+        .flight {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 18px;
+            padding: 18px;
+            border-bottom: 1.5px dashed var(--line);
+        }
+
+        .flight:last-child { border-bottom: none; }
+
+        .flight .fdate { font-family: var(--mono); font-size: 11.5px; color: var(--muted); padding-top: 3px; }
+        .flight .frole { font-weight: 700; font-size: 16px; }
+        .flight .forg { font-family: var(--mono); font-size: 11.5px; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.06em; margin: 2px 0 8px; }
+
+        .flight ul { list-style: none; }
+
+        .flight li {
+            font-size: 13.5px;
+            color: var(--soft);
+            padding: 2.5px 0 2.5px 18px;
+            position: relative;
+        }
+
+        .flight li::before { content: '▸'; position: absolute; left: 0; color: var(--signal); }
+        .flight li b { color: var(--ink); }
+
+        /* Fleet (projects) */
+        .fleet-card .stars-line { font-family: var(--mono); font-size: 12px; color: var(--signal); font-weight: 700; }
+
+        /* Manifest (skills) */
+        .manifest-row {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 14px;
+            padding: 11px 18px;
+            border-bottom: 1.5px dashed var(--line);
+            align-items: baseline;
+        }
+
+        .manifest-row:last-child { border-bottom: none; }
+        .manifest-row b { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--navy); }
+        .manifest-row span { font-size: 13.5px; color: var(--soft); }
+
+        /* Docking (contact) */
+        .dock { text-align: center; padding: 46px 24px; }
+        .dock h2 { font-size: clamp(24px, 3.6vw, 40px); text-transform: uppercase; letter-spacing: -0.02em; margin-bottom: 10px; }
+        .dock p { color: var(--soft); max-width: 480px; margin: 0 auto 26px; }
+        .dock .btn-row { justify-content: center; }
+
+        footer {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            padding: 30px 0 90px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Variant switcher */
+        .variants {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: var(--navy);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+
+        .variants a { color: #fff; text-decoration: none; opacity: 0.7; }
+        .variants a:hover, .variants a.on { opacity: 1; color: #7dd3fc; }
+
+        .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.6s ease, transform 0.6s ease; }
+        .reveal.in { opacity: 1; transform: none; }
+
+        @media (max-width: 900px) {
+            .duo, .trio { grid-template-columns: 1fr; }
+            .telemetry { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 620px) {
+            .wrap { padding: 0 16px; }
+            .strip-inner { padding: 8px 16px; }
+            .wp { padding-left: 52px; }
+            .wp-marker { width: 36px; height: 36px; top: 40px; }
+            .flight { grid-template-columns: 1fr; gap: 4px; }
+            .manifest-row { grid-template-columns: 1fr; gap: 2px; }
+            .mbtn { width: 100%; justify-content: center; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { opacity: 1; transform: none; transition: none; }
+            .blink { animation: none; }
+            #swarm { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="swarm" aria-hidden="true"></canvas>
+
+    <div class="strip">
+        <div class="strip-inner">
+            <span><b>MISSION CTRL</b></span>
+            <span class="ok">● LINK <span class="blink">ACTIVE</span></span>
+            <span>CALLSIGN <b>LAUQZ</b></span>
+            <span>SWARM <b id="stripSwarm">24</b> UNITS</span>
+            <span><b>ITALY</b> ❤️ <b>JAPAN</b></span>
+            <div class="right">
+                <a href="https://github.com/Lauqz" target="_blank" rel="noopener">GITHUB</a>
+                <a href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">LINKEDIN</a>
+                <a href="mailto:guido.laudenzi@libero.it">COMMS</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <!-- ============ HERO ============ -->
+        <header class="hero">
+            <div class="callsign">Mission dossier · AI &amp; Research Engineer</div>
+            <h1>Guido<br>Laudenzi <span class="thin">// Swarm Cmdr</span></h1>
+            <p class="hero-brief">
+                Operator of multi-agent systems - from vision-based drone swarms at AIST Japan to RL environments and evaluations that frontier AI models train against. The swarm on your screen right now? Boids. Occupational habit.
+            </p>
+            <div class="telemetry">
+                <div class="tele-cell"><div class="tl">RL Envs Authored</div><div class="tv">50<small>+</small></div></div>
+                <div class="tele-cell"><div class="tl">GitHub Stars</div><div class="tv" id="tStars">103</div></div>
+                <div class="tele-cell"><div class="tl">Swarm Success</div><div class="tv">90–95<small>%</small></div></div>
+                <div class="tele-cell"><div class="tl">Years In AI</div><div class="tv" id="tYears">7.0</div></div>
+            </div>
+            <div class="btn-row">
+                <a class="mbtn primary" href="#wp5">⏍ Request Docking</a>
+                <a class="mbtn" href="https://github.com/Lauqz" target="_blank" rel="noopener">Fleet Registry ↗</a>
+            </div>
+        </header>
+
+        <!-- ============ ROUTE ============ -->
+        <div class="route">
+
+            <!-- WP-01 Research -->
+            <section class="wp reveal" id="wp1">
+                <div class="wp-marker"><span>01</span></div>
+                <div class="wp-head"><span class="wp-code">WP-01 / PAYLOAD</span><h2>Research</h2></div>
+                <div class="wp-sub">// primary payload: vision-based multi-agent RL for quadrotor swarms</div>
+                <div class="duo">
+                    <div class="console hoverable">
+                        <div class="console-title"><span>payload/manuscript</span><span class="stamp orange">Under review</span></div>
+                        <div class="console-body">
+                            <h3>An End-to-End Multi-Agent RL Baseline for Vision-Based Quadrotor Swarm Navigation</h3>
+                            <p>Design, implementation and emergent behavior analysis. 2-, 3- and 5-drone swarms across static, dynamic and forest maps - 90–95% full-swarm success, initial sim2real over ROS.</p>
+                            <div class="fine">G. LAUDENZI · A. ROLI · A. KAMIMURA · K. TOMITA - ROBOTICS AND AUTONOMOUS SYSTEMS (ELSEVIER), 2026</div>
+                        </div>
+                    </div>
+                    <div class="col-gap">
+                        <a class="plain" href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">
+                            <div class="console hoverable">
+                                <div class="console-title"><span>payload/reference-impl</span><span class="stamp green" id="wpDroneStars">★ 93</span></div>
+                                <div class="console-body">
+                                    <h3>Drone-Swarm-RL-airsim-sb3</h3>
+                                    <p>Open-source baseline - SB3, PettingZoo, AirSim, UE4.</p>
+                                </div>
+                            </div>
+                        </a>
+                        <div class="console hoverable">
+                            <div class="console-title"><span>payload/upstream</span><span class="stamp blue">Farama</span></div>
+                            <div class="console-body">
+                                <p>Open PRs: SuperSuit <a href="https://github.com/Farama-Foundation/SuperSuit/pull/268" target="_blank" rel="noopener">#268</a> <a href="https://github.com/Farama-Foundation/SuperSuit/pull/269" target="_blank" rel="noopener">#269</a> · PettingZoo <a href="https://github.com/Farama-Foundation/PettingZoo/pull/1406" target="_blank" rel="noopener">#1406</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WP-02 Flight log -->
+            <section class="wp reveal" id="wp2">
+                <div class="wp-marker"><span>02</span></div>
+                <div class="wp-head"><span class="wp-code">WP-02 / LOG</span><h2>Flight Log</h2></div>
+                <div class="wp-sub">// sorties flown, reverse chronological</div>
+                <div class="console">
+                    <div class="flight">
+                        <div class="fdate">2025.04 → NOW</div>
+                        <div>
+                            <div class="frole">Machine Learning Research Engineer <span class="stamp orange" style="margin-left: 6px;">NDA</span></div>
+                            <div class="forg">Frontier AI training &amp; evals</div>
+                            <ul>
+                                <li>Authored <b>50+ RL environments</b>, reviewed <b>120+</b> - shaped rewards anchored to naive &amp; expert baselines, calibrated so frontier agents fail them</li>
+                                <li>Extended <b>tau-bench</b> to new domains: 20–30-API interfaces, 100 tasks each, verified vs ground-truth call sequences</li>
+                                <li>Verifiable-reward suite across <b>25 domains</b> (routing, scheduling, packing) - OR-Tools ground truth</li>
+                                <li>Blind adjudication of model-generated bug analyses, reproduced on GPU</li>
+                                <li>Gold-medal chains for <b>40 Kaggle/MLE-bench tasks</b> → client model trained on <b>50×H100</b></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flight">
+                        <div class="fdate">2026.05 → NOW</div>
+                        <div>
+                            <div class="frole">Founder &amp; CEO</div>
+                            <div class="forg">TamaAI S.r.l.s. · Italy</div>
+                        </div>
+                    </div>
+                    <div class="flight">
+                        <div class="fdate">2024.04 → NOW</div>
+                        <div>
+                            <div class="frole">AI Engineer</div>
+                            <div class="forg">Machine Learning Reply · Milan</div>
+                            <ul>
+                                <li>Brand image generation: <b>$1,000/photo → $0.10/image</b> at 30% first-pass acceptance (multi-agent JSON prompt construction)</li>
+                                <li><b>LoRA, LoKr &amp; full fine-tuning</b> of Z-Image, Qwen-Image, Krea, Ideogram - print-resolution upscale</li>
+                                <li><b>Multimodal RAG</b> + Text-to-SQL on Azure · Terraform · account lead (delivery, budget, team)</li>
+                                <li>Sketch → 2.5D → <b>3D mesh</b> pipeline (TRELLIS 2, H100) - 100+ assets in pilot</li>
+                                <li>OCR receipts on GCP: template-free <b>LLM extractor</b>, −30% extraction errors</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flight">
+                        <div class="fdate">2023.10 - 2024.03</div>
+                        <div>
+                            <div class="frole">AI Engineer</div>
+                            <div class="forg">AIDAPT S.r.l. · Ancona</div>
+                            <ul>
+                                <li>LLM fine-tuning (Axolotl) · production RAG on LangChain + FAISS · NeRF outliers</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flight">
+                        <div class="fdate">2023.04 - 2023.10</div>
+                        <div>
+                            <div class="frole">RL Researcher</div>
+                            <div class="forg">AIST · Tsukuba, Japan</div>
+                            <ul>
+                                <li>Vision-based MARL for quadrotor swarms - the payload at WP-01</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flight">
+                        <div class="fdate">2019.08 - 2019.11</div>
+                        <div>
+                            <div class="frole">ML Research Intern</div>
+                            <div class="forg">AIST · Tsukuba, Japan · first sortie</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WP-03 Fleet -->
+            <section class="wp reveal" id="wp3">
+                <div class="wp-marker"><span>03</span></div>
+                <div class="wp-head"><span class="wp-code">WP-03 / FLEET</span><h2>Fleet</h2></div>
+                <div class="wp-sub">// open-source units, live star telemetry</div>
+                <div class="trio">
+                    <a class="plain" href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">
+                        <div class="console hoverable fleet-card">
+                            <div class="console-title"><span>unit/alpha</span><span class="stars-line" id="f-drone">★ 93</span></div>
+                            <div class="console-body">
+                                <h3>🚁 Drone-Swarm-RL</h3>
+                                <p>MARL drone swarms - UE4, AirSim, SB3, PettingZoo.</p>
+                            </div>
+                        </div>
+                    </a>
+                    <a class="plain" href="https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning" target="_blank" rel="noopener">
+                        <div class="console hoverable fleet-card">
+                            <div class="console-title"><span>unit/bravo</span><span class="stars-line" id="f-mcvrp">★ 6</span></div>
+                            <div class="console-body">
+                                <h3>📦 MCVRP</h3>
+                                <p>Courier routing - CP, SMT, MIP.</p>
+                            </div>
+                        </div>
+                    </a>
+                    <a class="plain" href="https://github.com/Lauqz/BlastPursuitMARL" target="_blank" rel="noopener">
+                        <div class="console hoverable fleet-card">
+                            <div class="console-title"><span>unit/charlie</span><span class="stars-line" id="f-blast">★ 4</span></div>
+                            <div class="console-body">
+                                <h3>💣 BlastPursuitMARL</h3>
+                                <p>Bomberman-style multi-agent RL environment.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- WP-04 Manifest -->
+            <section class="wp reveal" id="wp4">
+                <div class="wp-marker"><span>04</span></div>
+                <div class="wp-head"><span class="wp-code">WP-04 / EQUIPMENT</span><h2>Manifest</h2></div>
+                <div class="wp-sub">// certified equipment &amp; crew qualifications</div>
+                <div class="console">
+                    <div class="manifest-row"><b>RL / Envs</b><span>Stable-Baselines3 · PettingZoo · Gymnasium · PPO/SAC · reward design · verifiable rewards · sim2real</span></div>
+                    <div class="manifest-row"><b>LLMs / Agents</b><span>SFT · LoRA · LoKr · RAG · tool calling · tau-bench · MLE-bench · LangGraph · MCP</span></div>
+                    <div class="manifest-row"><b>ML / DL</b><span>PyTorch · JAX · TensorFlow · Transformers · Diffusers · PEFT · Axolotl</span></div>
+                    <div class="manifest-row"><b>Generative / 3D</b><span>Stable Diffusion · FLUX · Qwen-Image · Z-Image · TRELLIS · Hunyuan3D · NeRF</span></div>
+                    <div class="manifest-row"><b>Infra</b><span>Python · SQL · Docker · Linux · Azure · GCP · Terraform · H100</span></div>
+                    <div class="manifest-row"><b>Crew Training</b><span>M.Sc. AI @ UNIBO - 110/110, GPA 4.0 · B.Sc. @ UNIVPM · both theses flown at AIST, Japan</span></div>
+                    <div class="manifest-row"><b>Comms</b><span>Italian (native) · English (C1, IELTS 8.0) · Japanese (JLPT N5 - in training 頑張る)</span></div>
+                </div>
+            </section>
+
+            <!-- WP-05 Docking -->
+            <section class="wp reveal" id="wp5">
+                <div class="wp-marker"><span>05</span></div>
+                <div class="wp-head"><span class="wp-code">WP-05 / COMMS</span><h2>Docking</h2></div>
+                <div class="wp-sub">// clearance granted for: RL environments · evals · agents · generative AI · Japan</div>
+                <div class="console dock">
+                    <h2>Open a channel</h2>
+                    <p>Mission proposals, collaborations, and anything pointing toward Japan get priority routing.</p>
+                    <div class="btn-row">
+                        <a class="mbtn primary" href="mailto:guido.laudenzi@libero.it">✉ guido.laudenzi@libero.it</a>
+                        <a class="mbtn" href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">LinkedIn ↗</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer>© 2026 Guido Laudenzi · swarm behavior emergent · updated 2026.07</footer>
+    </div>
+
+    <script>
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ---- Boids swarm (the toned-down, on-brand mouse effect) ----
+        const canvas = document.getElementById('swarm');
+        const ctx = canvas.getContext('2d');
+        let W, H;
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const N = window.innerWidth < 700 ? 14 : 24;
+        document.getElementById('stripSwarm').textContent = N;
+        const mouse = { x: null, y: null };
+
+        document.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; }, { passive: true });
+        document.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
+
+        const boids = Array.from({ length: N }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+        }));
+
+        const MAX_SPEED = 2.1, PERCEPTION = 90, SEP_DIST = 26;
+
+        function stepBoid(b) {
+            let cx = 0, cy = 0, ax = 0, ay = 0, sx = 0, sy = 0, n = 0;
+            for (const o of boids) {
+                if (o === b) continue;
+                const dx = o.x - b.x, dy = o.y - b.y;
+                const d = Math.hypot(dx, dy);
+                if (d < PERCEPTION) {
+                    cx += o.x; cy += o.y;      // cohesion
+                    ax += o.vx; ay += o.vy;    // alignment
+                    if (d < SEP_DIST && d > 0) { sx -= dx / d; sy -= dy / d; }  // separation
+                    n++;
+                }
+            }
+            if (n > 0) {
+                b.vx += ((cx / n - b.x) * 0.0016) + ((ax / n - b.vx) * 0.04) + sx * 0.10;
+                b.vy += ((cy / n - b.y) * 0.0016) + ((ay / n - b.vy) * 0.04) + sy * 0.10;
+            }
+            // gentle attraction to cursor (the swarm investigates you)
+            if (mouse.x !== null) {
+                const dx = mouse.x - b.x, dy = mouse.y - b.y;
+                const d = Math.hypot(dx, dy);
+                if (d > 120) { b.vx += dx / d * 0.045; b.vy += dy / d * 0.045; }
+                else if (d < 70 && d > 0) { b.vx -= dx / d * 0.06; b.vy -= dy / d * 0.06; }
+            }
+            const sp = Math.hypot(b.vx, b.vy);
+            if (sp > MAX_SPEED) { b.vx = b.vx / sp * MAX_SPEED; b.vy = b.vy / sp * MAX_SPEED; }
+            if (sp < 0.6) { b.vx *= 1.06; b.vy *= 1.06; }
+            b.x += b.vx; b.y += b.vy;
+            const M = 30;
+            if (b.x < -M) b.x = W + M; if (b.x > W + M) b.x = -M;
+            if (b.y < -M) b.y = H + M; if (b.y > H + M) b.y = -M;
+        }
+
+        function drawBoid(b) {
+            const angle = Math.atan2(b.vy, b.vx);
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(7, 0);
+            ctx.lineTo(-5, 4.5);
+            ctx.lineTo(-2.5, 0);
+            ctx.lineTo(-5, -4.5);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(11, 58, 94, 0.34)';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        if (!reduceMotion) {
+            (function loop() {
+                ctx.clearRect(0, 0, W, H);
+                for (const b of boids) { stepBoid(b); drawBoid(b); }
+                requestAnimationFrame(loop);
+            })();
+        }
+
+        // ---- Waypoints get "reached" as you scroll ----
+        const wpIO = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('reached'); });
+        }, { threshold: 0.25 });
+        document.querySelectorAll('.wp').forEach(w => wpIO.observe(w));
+
+        // ---- Reveal ----
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+        // ---- Telemetry ----
+        (function () {
+            const now = new Date();
+            document.getElementById('tYears').textContent =
+                (now.getFullYear() - 2019 + now.getMonth() / 12).toFixed(1);
+        })();
+
+        fetch('./stats.json?' + Date.now()).then(r => r.json()).then(s => {
+            if (!s.stars) return;
+            const total = Object.values(s.stars).reduce((a, b) => a + (Number(b) || 0), 0);
+            document.getElementById('tStars').textContent = total;
+            const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = '★ ' + v; };
+            set('f-drone', s.stars.drone); set('f-mcvrp', s.stars.mcvrp); set('f-blast', s.stars.blast);
+            set('wpDroneStars', s.stars.drone);
+        }).catch(() => {});
+    </script>
+
+    <!-- ===== Designs switcher ===== -->
+    <div class="dsw" id="dsw">
+        <style>
+            .dsw-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 4001; display: inline-flex; align-items: center; gap: 8px; writing-mode: vertical-rl; padding: 15px 6px 15px 7px; font-family: 'Space Grotesk', 'JetBrains Mono', 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #5b566e; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(20, 18, 31, 0.1); border-left: none; border-radius: 0 11px 11px 0; cursor: pointer; transition: background .2s ease, color .2s ease, padding .2s ease; }
+            .dsw-tab:hover { background: rgba(255, 255, 255, 0.95); color: #14121f; padding-left: 10px; }
+            .dsw-tab .sp { background: linear-gradient(135deg, #8c52ff, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 13px; }
+            .dsw-shade { position: fixed; inset: 0; z-index: 3999; background: rgba(20, 18, 31, 0.18); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+            .dsw.open .dsw-shade { opacity: 1; pointer-events: auto; }
+            .dsw-panel { position: fixed; top: 0; left: 0; bottom: 0; z-index: 4000; width: min(280px, 82vw); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid rgba(20, 18, 31, 0.08); box-shadow: 24px 0 50px -24px rgba(20, 18, 31, 0.35); transform: translateX(-102%); transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1); overflow-y: auto; overscroll-behavior: contain; }
+            .dsw.open .dsw-panel { transform: translateX(0); }
+            .dsw-head { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8aa8; padding: 18px 18px 4px; }
+            .dsw-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 18px; }
+            .dsw-card { text-decoration: none !important; border: 1px solid #e6e3ef; border-radius: 13px; padding: 12px 14px; background: #fff; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+            .dsw-card:hover { transform: translateX(3px); border-color: #c9bcf5; box-shadow: 0 10px 24px -12px rgba(109, 90, 230, 0.4); }
+            .dsw-card i { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; font-style: normal; color: #8c52ff; letter-spacing: 0.1em; margin-bottom: 5px; }
+            .dsw-card b { display: block; font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; color: #14121f; margin-bottom: 3px; }
+            .dsw-card span { display: block; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #7b7690; }
+            .dsw-card.cur { border-color: #8c52ff; background: #f6f2ff; }
+            .dsw-card.cur i::after { content: '  b7 here'; color: #b7a5f2; }
+            @media (prefers-reduced-motion: reduce) { .dsw-panel, .dsw-shade, .dsw-tab { transition: none; } }
+            @media print { .dsw { display: none; } }
+        </style>
+        <div class="dsw-shade" id="dswShade"></div>
+        <nav class="dsw-panel" id="dswMenu" aria-label="Design variants">
+            <div class="dsw-head">&#10022; designs</div>
+            <div class="dsw-row">
+                <a class="dsw-card" href="index.html"><i>00</i><b>Entry</b><span>the minimal front door</span></a>
+                <a class="dsw-card" href="alt-terminal.html"><i>01</i><b>Terminal</b><span>the CV as a live shell session</span></a>
+                <a class="dsw-card" href="alt-experiment.html"><i>02</i><b>TrainRun</b><span>career as an experiment tracker</span></a>
+                <a class="dsw-card" href="alt-gridworld.html"><i>03</i><b>Gridworld</b><span>an RL episode: explore, collect reward</span></a>
+                <a class="dsw-card" href="alt-mission.html"><i>04</i><b>Mission</b><span>drone mission control, live swarm</span></a>
+                <a class="dsw-card" href="alt-chat.html"><i>05</i><b>Chat</b><span>the CV as an AI conversation</span></a>
+                <a class="dsw-card" href="alt-diffusion.html"><i>06</i><b>Denoise</b><span>a portfolio out of pure noise</span></a>
+                <a class="dsw-card" href="alt-os.html"><i>07</i><b>GuidoOS</b><span>a tiny desktop operating system</span></a>
+                <a class="dsw-card" href="alt-hearts.html"><i>08</i><b>Kingdom</b><span>a certain beloved opening menu</span></a>
+            </div>
+        </nav>
+        <button class="dsw-tab" id="dswBtn" aria-expanded="false" aria-haspopup="true"><span class="sp">&#10022;</span><span>designs</span></button>
+        <script>
+            (function () {
+                var dsw = document.getElementById('dsw');
+                var btn = document.getElementById('dswBtn');
+                var shade = document.getElementById('dswShade');
+                function setOpen(v) { dsw.classList.toggle('open', v); btn.setAttribute('aria-expanded', v); }
+                btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!dsw.classList.contains('open')); });
+                shade.addEventListener('click', function () { setOpen(false); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+                var here = location.pathname.split('/').pop() || 'index.html';
+                var cards = dsw.querySelectorAll('.dsw-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('href') === here) cards[i].classList.add('cur');
+                }
+            })();
+        </script>
+    </div>
+
+</body>
+</html>

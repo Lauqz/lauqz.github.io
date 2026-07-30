@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>run: guido-laudenzi · experiment tracker</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f5f8;
+            --panel: #ffffff;
+            --ink: #1a1d27;
+            --soft: #4b5060;
+            --muted: #858ba0;
+            --line: #e4e7ef;
+            --violet: #7c3aed;
+            --green: #059669;
+            --orange: #ea580c;
+            --blue: #2563eb;
+            --pink: #db2777;
+            --sans: 'Space Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--sans);
+            line-height: 1.55;
+            padding-bottom: 80px;
+        }
+
+        ::selection { background: var(--violet); color: #fff; }
+
+        a { color: var(--violet); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+        /* ---------- Run header ---------- */
+        .runbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(244, 245, 248, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .runbar-inner {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-family: var(--mono);
+            font-size: 12.5px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .run-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.15);
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(5, 150, 105, 0.07); } }
+
+        .runbar .name { font-weight: 700; }
+        .runbar .dim { color: var(--muted); }
+        .runbar .state { color: var(--green); font-weight: 700; }
+        .runbar .right { margin-left: auto; display: flex; gap: 16px; }
+        .runbar .right a { color: var(--soft); }
+
+        /* ---------- Panels ---------- */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 18px;
+            padding: 24px 0;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(26, 29, 39, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+        }
+
+        .panel:hover {
+            box-shadow: 0 12px 32px -12px rgba(26, 29, 39, 0.18);
+            border-color: #d3d8e6;
+            transform: translateY(-2px);
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            font-family: var(--mono);
+            font-size: 11.5px;
+            font-weight: 500;
+            color: var(--muted);
+            text-transform: lowercase;
+        }
+
+        .panel-head .grip { color: #c9cedd; letter-spacing: -2px; }
+        .panel-head .kind { margin-left: auto; font-size: 10.5px; border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; }
+
+        .panel-body { padding: 18px; flex: 1; }
+
+        .c12 { grid-column: span 12; }
+        .c8 { grid-column: span 8; }
+        .c6 { grid-column: span 6; }
+        .c4 { grid-column: span 4; }
+        .c3 { grid-column: span 3; }
+
+        /* ---------- Overview panel ---------- */
+        .overview { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+
+        .overview img {
+            width: 108px; height: 108px;
+            border-radius: 14px;
+            object-fit: cover;
+            border: 1px solid var(--line);
+        }
+
+        .overview h1 {
+            font-size: clamp(26px, 3.4vw, 40px);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+        }
+
+        .overview .sub { color: var(--soft); font-size: 15.5px; margin-top: 4px; }
+
+        .tagrow { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+
+        .tag {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #f1edfd;
+            color: var(--violet);
+            border: 1px solid #e2d9fb;
+        }
+
+        .tag.g { background: #e7f6f0; color: var(--green); border-color: #cdeee1; }
+        .tag.o { background: #fdf0e7; color: var(--orange); border-color: #fadfc9; }
+
+        /* ---------- Metric tiles ---------- */
+        .mt-value {
+            font-family: var(--mono);
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .mt-value small { font-size: 14px; color: var(--muted); font-weight: 500; }
+        .mt-delta { font-family: var(--mono); font-size: 11.5px; color: var(--green); margin-top: 2px; }
+        .mt-spark { margin-top: 12px; }
+        .mt-spark svg { width: 100%; height: 42px; display: block; }
+
+        .spark-line {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-dasharray: 300;
+            stroke-dashoffset: 300;
+            animation: draw 1.6s ease-out forwards;
+        }
+
+        .spark-fill { opacity: 0.12; }
+
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+
+        /* ---------- Big chart ---------- */
+        .chart-wrap { position: relative; }
+        .chart-wrap svg { width: 100%; height: 300px; display: block; overflow: visible; }
+
+        .axis-label { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+        .gridline { stroke: var(--line); stroke-width: 1; }
+
+        .career-line {
+            fill: none;
+            stroke: var(--violet);
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-dasharray: 1600;
+            stroke-dashoffset: 1600;
+            animation: draw 2.6s ease-out 0.3s forwards;
+        }
+
+        .milestone { cursor: pointer; }
+        .milestone circle { fill: #fff; stroke: var(--violet); stroke-width: 2.5; transition: r 0.15s ease; }
+        .milestone:hover circle { fill: var(--violet); }
+        .milestone text { font-family: var(--mono); font-size: 10.5px; fill: var(--soft); }
+
+        .chart-tip {
+            position: absolute;
+            background: var(--ink);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            white-space: nowrap;
+            transform: translate(-50%, -130%);
+            z-index: 5;
+        }
+
+        /* ---------- Config yaml ---------- */
+        .yaml { font-family: var(--mono); font-size: 12.5px; line-height: 1.9; overflow-x: auto; }
+        .yaml .k { color: var(--violet); font-weight: 500; }
+        .yaml .v { color: var(--green); }
+        .yaml .c { color: var(--muted); font-style: italic; }
+
+        /* ---------- Eval table (experience) ---------- */
+        .evals { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+
+        .evals th {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--line);
+            font-weight: 500;
+        }
+
+        .evals td {
+            padding: 13px 12px;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+        }
+
+        .evals tr:last-child td { border-bottom: none; }
+        .evals tr { transition: background 0.15s ease; }
+        .evals tbody tr:hover { background: #f8f6ff; }
+
+        .evals .step { font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+        .evals .role { font-weight: 700; }
+        .evals .org { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+        .evals .notes { color: var(--soft); font-size: 13px; max-width: 480px; }
+
+        .badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+
+        .badge.running { background: #e7f6f0; color: var(--green); }
+        .badge.done { background: #eef1f7; color: var(--muted); }
+        .badge.nda { background: #fdf0e7; color: var(--orange); }
+
+        /* ---------- Artifacts ---------- */
+        .artifact {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            padding: 12px 4px;
+            border-bottom: 1px dashed var(--line);
+            font-size: 14px;
+        }
+
+        .artifact:last-child { border-bottom: none; }
+        .artifact .an { font-family: var(--mono); font-weight: 700; }
+        .artifact .ad { color: var(--muted); font-size: 12.5px; flex: 1; }
+        .artifact .stars { font-family: var(--mono); font-size: 12px; color: var(--orange); white-space: nowrap; }
+
+        /* ---------- Publication ---------- */
+        .pub { font-size: 14px; color: var(--soft); }
+        .pub b { color: var(--ink); }
+        .pub .venue { font-style: italic; }
+        .pub .status {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            font-weight: 700;
+            background: #fdf0e7;
+            color: var(--orange);
+            border-radius: 999px;
+            padding: 3px 10px;
+            margin-bottom: 10px;
+        }
+
+        /* ---------- Logs ---------- */
+        .logs {
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.85;
+            height: 176px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .logs::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, var(--panel), transparent 30%);
+            pointer-events: none;
+        }
+
+        .logs .t { color: var(--muted); }
+        .logs .INFO { color: var(--blue); font-weight: 700; }
+        .logs .EVAL { color: var(--violet); font-weight: 700; }
+        .logs .TRAIN { color: var(--green); font-weight: 700; }
+        .logs .GEN { color: var(--pink); font-weight: 700; }
+        .logs .SWARM { color: var(--orange); font-weight: 700; }
+
+        /* ---------- Contact ---------- */
+        .resume-run { text-align: center; padding: 34px 18px; }
+        .resume-run h2 { font-size: clamp(22px, 3vw, 32px); letter-spacing: -0.02em; margin-bottom: 8px; }
+        .resume-run p { color: var(--soft); margin-bottom: 22px; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--sans);
+            font-weight: 600;
+            font-size: 14.5px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            margin: 0 6px 8px;
+        }
+
+        .btn.primary { background: var(--violet); color: #fff; }
+        .btn.primary:hover { background: #6d28d9; text-decoration: none; }
+        .btn.ghost { background: var(--panel); border: 1px solid var(--line); color: var(--ink); }
+        .btn.ghost:hover { border-color: #c9cedd; text-decoration: none; }
+
+        footer {
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            padding-top: 10px;
+        }
+
+        /* ---------- Variant switcher ---------- */
+        .variants {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: var(--ink);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+
+        .variants a { color: #fff; opacity: 0.7; }
+        .variants a:hover, .variants a.on { opacity: 1; color: #c4b5fd; text-decoration: none; }
+
+        .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.55s ease, transform 0.55s ease; }
+        .reveal.in { opacity: 1; transform: none; }
+
+        @media (max-width: 1000px) {
+            .c8, .c6, .c4, .c3 { grid-column: span 12; }
+            .c6.half, .c3.half { grid-column: span 6; }
+        }
+
+        @media (max-width: 640px) {
+            .c6.half, .c3.half { grid-column: span 12; }
+            .evals .notes { max-width: none; }
+            .evals thead { display: none; }
+            .evals td { display: block; border-bottom: none; padding: 3px 12px; }
+            .evals tr { display: block; border-bottom: 1px solid var(--line); padding: 10px 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .spark-line, .career-line { animation: none; stroke-dashoffset: 0; }
+            .reveal { opacity: 1; transform: none; transition: none; }
+            .run-dot { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="runbar">
+        <div class="runbar-inner">
+            <span class="run-dot"></span>
+            <span class="name">guido / career / <b>run-2026.07</b></span>
+            <span class="dim">·</span>
+            <span class="state">RUNNING</span>
+            <span class="dim">· step <span id="stepCounter">2,847,120</span> · no early stopping</span>
+            <div class="right">
+                <a href="https://github.com/Lauqz" target="_blank" rel="noopener">github ↗</a>
+                <a href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">linkedin ↗</a>
+                <a href="mailto:guido.laudenzi@libero.it">contact ↗</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <div class="board">
+
+            <!-- Overview -->
+            <div class="panel c12 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> run overview <span class="kind">summary</span></div>
+                <div class="panel-body">
+                    <div class="overview">
+                        <img src="./me.png" alt="Guido Laudenzi">
+                        <div>
+                            <h1>Guido Laudenzi</h1>
+                            <div class="sub">AI &amp; Research Engineer - I train on hard problems: RL environments &amp; evals for frontier models, generative AI in production, multi-agent RL research.</div>
+                            <div class="tagrow">
+                                <span class="tag">multi-agent-rl</span>
+                                <span class="tag">llm-agents</span>
+                                <span class="tag">environments-and-evals</span>
+                                <span class="tag g">generative-ai</span>
+                                <span class="tag g">m.sc-ai · 110/110 · gpa-4.0</span>
+                                <span class="tag o">italy ❤️ japan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metric tiles -->
+            <div class="panel c3 half reveal">
+                <div class="panel-head"><span class="grip">⠿</span> envs/authored <span class="kind">metric</span></div>
+                <div class="panel-body">
+                    <div class="mt-value">50<small>+</small></div>
+                    <div class="mt-delta">▲ 120+ reviewed</div>
+                    <div class="mt-spark"><svg viewBox="0 0 120 42" preserveAspectRatio="none"><path class="spark-fill" fill="#7c3aed" d="M0,40 L15,36 L30,34 L45,28 L60,24 L75,16 L90,12 L105,7 L120,4 L120,42 L0,42 Z"/><polyline class="spark-line" stroke="#7c3aed" points="0,40 15,36 30,34 45,28 60,24 75,16 90,12 105,7 120,4"/></svg></div>
+                </div>
+            </div>
+            <div class="panel c3 half reveal">
+                <div class="panel-head"><span class="grip">⠿</span> github/stars <span class="kind">metric</span></div>
+                <div class="panel-body">
+                    <div class="mt-value" id="mStars">103</div>
+                    <div class="mt-delta">▲ live from stats.json</div>
+                    <div class="mt-spark"><svg viewBox="0 0 120 42" preserveAspectRatio="none"><path class="spark-fill" fill="#059669" d="M0,41 L20,39 L40,35 L60,30 L80,20 L100,10 L120,5 L120,42 L0,42 Z"/><polyline class="spark-line" stroke="#059669" points="0,41 20,39 40,35 60,30 80,20 100,10 120,5"/></svg></div>
+                </div>
+            </div>
+            <div class="panel c3 half reveal">
+                <div class="panel-head"><span class="grip">⠿</span> os/projects <span class="kind">metric</span></div>
+                <div class="panel-body">
+                    <div class="mt-value" id="mProjects">13</div>
+                    <div class="mt-delta">▲ public repos</div>
+                    <div class="mt-spark"><svg viewBox="0 0 120 42" preserveAspectRatio="none"><path class="spark-fill" fill="#ea580c" d="M0,40 L20,37 L40,32 L60,29 L80,22 L100,14 L120,8 L120,42 L0,42 Z"/><polyline class="spark-line" stroke="#ea580c" points="0,40 20,37 40,32 60,29 80,22 100,14 120,8"/></svg></div>
+                </div>
+            </div>
+            <div class="panel c3 half reveal">
+                <div class="panel-head"><span class="grip">⠿</span> years/in-ai <span class="kind">metric</span></div>
+                <div class="panel-body">
+                    <div class="mt-value" id="mYears">7.0</div>
+                    <div class="mt-delta">▲ since AIST 2019</div>
+                    <div class="mt-spark"><svg viewBox="0 0 120 42" preserveAspectRatio="none"><path class="spark-fill" fill="#2563eb" d="M0,38 L24,34 L48,29 L72,22 L96,13 L120,6 L120,42 L0,42 Z"/><polyline class="spark-line" stroke="#2563eb" points="0,38 24,34 48,29 72,22 96,13 120,6"/></svg></div>
+                </div>
+            </div>
+
+            <!-- Big career chart -->
+            <div class="panel c8 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> charts/career_progress <span class="kind">line</span></div>
+                <div class="panel-body">
+                    <div class="chart-wrap" id="chartWrap">
+                        <svg viewBox="0 0 800 300" id="careerChart" role="img" aria-label="Career progress 2016 to 2026">
+                            <line class="gridline" x1="40" y1="250" x2="780" y2="250"/>
+                            <line class="gridline" x1="40" y1="190" x2="780" y2="190" stroke-dasharray="3 5"/>
+                            <line class="gridline" x1="40" y1="130" x2="780" y2="130" stroke-dasharray="3 5"/>
+                            <line class="gridline" x1="40" y1="70" x2="780" y2="70" stroke-dasharray="3 5"/>
+                            <text class="axis-label" x="40" y="272">2016</text>
+                            <text class="axis-label" x="250" y="272">2019</text>
+                            <text class="axis-label" x="460" y="272">2023</text>
+                            <text class="axis-label" x="600" y="272">2025</text>
+                            <text class="axis-label" x="740" y="272">2026</text>
+                            <path class="career-line" d="M50,245 C130,240 180,232 240,215 C300,198 320,196 380,180 C440,163 450,140 480,120 C520,93 560,90 610,70 C660,50 700,42 770,28"/>
+                            <g class="milestone" data-tip="2016 · B.Sc. begins - UNIVPM"><circle cx="50" cy="245" r="6"/></g>
+                            <g class="milestone" data-tip="2019 · First AIST appointment (Tsukuba)"><circle cx="245" cy="213" r="6"/></g>
+                            <g class="milestone" data-tip="2021 · M.Sc. AI @ UNIBO begins"><circle cx="380" cy="180" r="6"/></g>
+                            <g class="milestone" data-tip="2023 · AIST #2 - MARL drone swarms"><circle cx="480" cy="120" r="6"/></g>
+                            <g class="milestone" data-tip="2024 · AI Engineer @ ML Reply · M.Sc. 110/110"><circle cx="545" cy="95" r="6"/></g>
+                            <g class="milestone" data-tip="2025 · Frontier AI evals contract (NDA)"><circle cx="610" cy="70" r="6"/></g>
+                            <g class="milestone" data-tip="2026 · Paper submitted · TamaAI founded"><circle cx="770" cy="28" r="6"/></g>
+                        </svg>
+                        <div class="chart-tip" id="chartTip"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Config -->
+            <div class="panel c4 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> config.yaml <span class="kind">config</span></div>
+                <div class="panel-body">
+                    <div class="yaml">
+<span class="k">agent:</span> <span class="v">guido_laudenzi</span><br>
+<span class="k">objective:</span> <span class="v">research → production</span><br>
+<span class="k">rl:</span> <span class="v">[sb3, pettingzoo, gymnasium,</span><br>&nbsp;&nbsp;<span class="v">reward_design, verifiable_rewards]</span><br>
+<span class="k">llm:</span> <span class="v">[sft, lora, lokr, rag,</span><br>&nbsp;&nbsp;<span class="v">tau-bench, mle-bench, langgraph, mcp]</span><br>
+<span class="k">generative:</span> <span class="v">[sdxl, flux, qwen-image,</span><br>&nbsp;&nbsp;<span class="v">trellis, hunyuan3d, nerf]</span><br>
+<span class="k">infra:</span> <span class="v">[docker, linux, azure, gcp,</span><br>&nbsp;&nbsp;<span class="v">terraform, h100]</span><br>
+<span class="k">langs:</span> <span class="v">{it: native, en: C1-ielts8.0,</span><br>&nbsp;&nbsp;<span class="v">ja: jlpt-n5}</span> <span class="c"># 頑張る</span><br>
+<span class="k">seed:</span> <span class="v">1996</span> <span class="c"># reproducible</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Experience table -->
+            <div class="panel c8 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> evals/experience <span class="kind">table</span></div>
+                <div class="panel-body" style="padding: 6px 4px;">
+                    <table class="evals">
+                        <thead>
+                            <tr><th>step</th><th>run</th><th>notes</th><th>state</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="step">2025.04 →</td>
+                                <td><div class="role">ML Research Engineer</div><div class="org">frontier AI evals</div></td>
+                                <td class="notes">50+ RL envs authored, 120+ reviewed (rewards calibrated so frontier agents fail) · tau-bench extensions, ground-truth verified · verifiable-reward suite ×25 domains (OR-Tools) · blind bug adjudication on GPU · MLE-bench gold chains → client model on 50×H100</td>
+                                <td><span class="badge nda">NDA</span> <span class="badge running">running</span></td>
+                            </tr>
+                            <tr>
+                                <td class="step">2026.05 →</td>
+                                <td><div class="role">Founder &amp; CEO</div><div class="org">TamaAI S.r.l.s.</div></td>
+                                <td class="notes">Guido's own AI company · Italy.</td>
+                                <td><span class="badge running">running</span></td>
+                            </tr>
+                            <tr>
+                                <td class="step">2024.04 →</td>
+                                <td><div class="role">AI Engineer</div><div class="org">ML Reply · Milan</div></td>
+                                <td class="notes">Brand image gen $1,000 → $0.10/image @ 30% first-pass · LoRA/LoKr/full fine-tunes (Z-Image, Qwen-Image, Krea, Ideogram) · multimodal RAG + Text-to-SQL · sketch→3D (TRELLIS 2, H100) · OCR LLM extractor −30% errors · account lead</td>
+                                <td><span class="badge running">running</span></td>
+                            </tr>
+                            <tr>
+                                <td class="step">2023.10</td>
+                                <td><div class="role">AI Engineer</div><div class="org">AIDAPT · Ancona</div></td>
+                                <td class="notes">LLM fine-tuning (Axolotl) · production RAG on LangChain + FAISS · NeRF outlier detection</td>
+                                <td><span class="badge done">done</span></td>
+                            </tr>
+                            <tr>
+                                <td class="step">2023.04</td>
+                                <td><div class="role">RL Researcher</div><div class="org">AIST · Japan</div></td>
+                                <td class="notes">Vision-based MARL for quadrotor swarms · 90–95% full-swarm success · sim2real over ROS</td>
+                                <td><span class="badge done">done</span></td>
+                            </tr>
+                            <tr>
+                                <td class="step">2019.08</td>
+                                <td><div class="role">ML Intern</div><div class="org">AIST · Japan</div></td>
+                                <td class="notes">CNNs/LSTMs for health signals · YOLO detection · remote GPU clusters</td>
+                                <td><span class="badge done">done</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Publication + logs column -->
+            <div class="panel c4 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> publications <span class="kind">artifact</span></div>
+                <div class="panel-body">
+                    <div class="pub">
+                        <span class="status">UNDER REVIEW · 2026</span><br>
+                        <b>“An End-to-End Multi-Agent Reinforcement Learning Baseline for Vision-Based Quadrotor Swarm Navigation”</b><br>
+                        G. Laudenzi, A. Roli, A. Kamimura, K. Tomita<br>
+                        <span class="venue">Robotics and Autonomous Systems</span> (Elsevier)<br><br>
+                        Reference impl: <a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL-airsim-sb3</a> · upstream PRs to <a href="https://github.com/Farama-Foundation/SuperSuit/pull/268" target="_blank" rel="noopener">SuperSuit</a> &amp; <a href="https://github.com/Farama-Foundation/PettingZoo/pull/1406" target="_blank" rel="noopener">PettingZoo</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Artifacts -->
+            <div class="panel c6 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> artifacts/projects <span class="kind">files</span></div>
+                <div class="panel-body">
+                    <a class="artifact" href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
+                        <span class="an">drone-swarm-rl/</span>
+                        <span class="ad">MARL drone swarms - UE4, AirSim, SB3, PettingZoo</span>
+                        <span class="stars" id="a-drone">★ 93</span>
+                    </a>
+                    <a class="artifact" href="https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
+                        <span class="an">mcvrp/</span>
+                        <span class="ad">Courier planning - CP, SMT, MIP</span>
+                        <span class="stars" id="a-mcvrp">★ 6</span>
+                    </a>
+                    <a class="artifact" href="https://github.com/Lauqz/BlastPursuitMARL" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
+                        <span class="an">blast-pursuit-marl/</span>
+                        <span class="ad">Bomberman-style multi-agent RL environment</span>
+                        <span class="stars" id="a-blast">★ 4</span>
+                    </a>
+                    <div class="artifact">
+                        <span class="an">education/</span>
+                        <span class="ad">M.Sc. AI @ UNIBO (110/110, GPA 4.0) · B.Sc. @ UNIVPM - both theses @ AIST Japan</span>
+                        <span class="stars">🎓</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="panel c6 reveal">
+                <div class="panel-head"><span class="grip">⠿</span> logs/stdout <span class="kind">stream</span></div>
+                <div class="panel-body">
+                    <div class="logs" id="logs"></div>
+                </div>
+            </div>
+
+            <!-- Contact -->
+            <div class="panel c12 reveal">
+                <div class="panel-body resume-run">
+                    <h2>Fork this run?</h2>
+                    <p>RL environments · evaluations · LLM agents · generative AI - or anything in Japan</p>
+                    <a class="btn primary" href="mailto:guido.laudenzi@libero.it">✉ guido.laudenzi@libero.it</a>
+                    <a class="btn ghost" href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">LinkedIn ↗</a>
+                    <a class="btn ghost" href="https://github.com/Lauqz" target="_blank" rel="noopener">GitHub ↗</a>
+                </div>
+            </div>
+
+        </div>
+
+        <footer>© 2026 guido laudenzi · logged every step · updated 2026-07</footer>
+    </div>
+
+    <script>
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ---- Reveal ----
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+        // ---- Step counter ticks like a live run ----
+        const stepEl = document.getElementById('stepCounter');
+        let step = 2847120;
+        if (!reduceMotion) {
+            setInterval(() => {
+                step += Math.floor(Math.random() * 40) + 8;
+                stepEl.textContent = step.toLocaleString('en-US');
+            }, 1400);
+        }
+
+        // ---- Years metric ----
+        (function () {
+            const now = new Date();
+            document.getElementById('mYears').textContent =
+                (now.getFullYear() - 2019 + now.getMonth() / 12).toFixed(1);
+        })();
+
+        // ---- Live stars ----
+        fetch('./stats.json?' + Date.now()).then(r => r.json()).then(s => {
+            if (s.projectCount) document.getElementById('mProjects').textContent = s.projectCount;
+            if (!s.stars) return;
+            const total = Object.values(s.stars).reduce((a, b) => a + (Number(b) || 0), 0);
+            document.getElementById('mStars').textContent = total;
+            const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = '★ ' + v; };
+            set('a-drone', s.stars.drone); set('a-mcvrp', s.stars.mcvrp); set('a-blast', s.stars.blast);
+        }).catch(() => {});
+
+        // ---- Chart milestone tooltips ----
+        const tip = document.getElementById('chartTip');
+        const chartWrap = document.getElementById('chartWrap');
+        document.querySelectorAll('.milestone').forEach(m => {
+            m.addEventListener('mouseenter', () => {
+                const c = m.querySelector('circle');
+                const svg = document.getElementById('careerChart');
+                const pt = svg.createSVGPoint();
+                pt.x = c.cx.baseVal.value; pt.y = c.cy.baseVal.value;
+                const screen = pt.matrixTransform(c.getScreenCTM());
+                const wrapRect = chartWrap.getBoundingClientRect();
+                tip.textContent = m.dataset.tip;
+                tip.style.left = (screen.x - wrapRect.x) + 'px';
+                tip.style.top = (screen.y - wrapRect.y) + 'px';
+                tip.style.opacity = '1';
+            });
+            m.addEventListener('mouseleave', () => { tip.style.opacity = '0'; });
+        });
+
+        // ---- Streaming logs ----
+        const LOG_LINES = [
+            ['INFO', 'reward-hacking path closed - solution files root-owned, agent runs uid=1000'],
+            ['EVAL', 'tau-bench: 100 tasks verified against ground-truth call sequences ✔'],
+            ['TRAIN', '50×H100 · utilization 97.8% · loss ↓'],
+            ['GEN', 'image accepted on first pass (p≈0.30) · cost $0.10'],
+            ['SWARM', '5/5 drones reached goal - forest map, seed 42'],
+            ['EVAL', 'frontier agent failed env #47 as designed 🎯'],
+            ['INFO', 'OR-Tools solver proved optimum in 1.2s - verifier armed'],
+            ['TRAIN', 'LoKr adapter converged @ epoch 8 · print-res upscale queued'],
+            ['SWARM', 'sim2real: telemetry nominal over ROS bridge'],
+            ['INFO', 'JLPT N5 → studying... 頑張ってる'],
+            ['EVAL', 'MLE-bench chain ranked: 5 baselines, worst → gold'],
+            ['GEN', 'sketch → 2.5D → 3D mesh · TRELLIS 2 on H100 · asset #103'],
+        ];
+        const logsEl = document.getElementById('logs');
+        let li = 0;
+        function pushLog() {
+            const [lvl, msg] = LOG_LINES[li % LOG_LINES.length]; li++;
+            const t = new Date();
+            const ts = t.toTimeString().slice(0, 8);
+            const div = document.createElement('div');
+            div.innerHTML = `<span class="t">${ts}</span> <span class="${lvl}">[${lvl}]</span> ${msg}`;
+            logsEl.appendChild(div);
+            while (logsEl.children.length > 7) logsEl.removeChild(logsEl.firstChild);
+        }
+        for (let i = 0; i < 6; i++) pushLog();
+        if (!reduceMotion) setInterval(pushLog, 2200);
+    </script>
+
+    <!-- ===== Designs switcher ===== -->
+    <div class="dsw" id="dsw">
+        <style>
+            .dsw-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 4001; display: inline-flex; align-items: center; gap: 8px; writing-mode: vertical-rl; padding: 15px 6px 15px 7px; font-family: 'Space Grotesk', 'JetBrains Mono', 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #5b566e; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(20, 18, 31, 0.1); border-left: none; border-radius: 0 11px 11px 0; cursor: pointer; transition: background .2s ease, color .2s ease, padding .2s ease; }
+            .dsw-tab:hover { background: rgba(255, 255, 255, 0.95); color: #14121f; padding-left: 10px; }
+            .dsw-tab .sp { background: linear-gradient(135deg, #8c52ff, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 13px; }
+            .dsw-shade { position: fixed; inset: 0; z-index: 3999; background: rgba(20, 18, 31, 0.18); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+            .dsw.open .dsw-shade { opacity: 1; pointer-events: auto; }
+            .dsw-panel { position: fixed; top: 0; left: 0; bottom: 0; z-index: 4000; width: min(280px, 82vw); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid rgba(20, 18, 31, 0.08); box-shadow: 24px 0 50px -24px rgba(20, 18, 31, 0.35); transform: translateX(-102%); transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1); overflow-y: auto; overscroll-behavior: contain; }
+            .dsw.open .dsw-panel { transform: translateX(0); }
+            .dsw-head { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8aa8; padding: 18px 18px 4px; }
+            .dsw-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 18px; }
+            .dsw-card { text-decoration: none !important; border: 1px solid #e6e3ef; border-radius: 13px; padding: 12px 14px; background: #fff; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+            .dsw-card:hover { transform: translateX(3px); border-color: #c9bcf5; box-shadow: 0 10px 24px -12px rgba(109, 90, 230, 0.4); }
+            .dsw-card i { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; font-style: normal; color: #8c52ff; letter-spacing: 0.1em; margin-bottom: 5px; }
+            .dsw-card b { display: block; font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; color: #14121f; margin-bottom: 3px; }
+            .dsw-card span { display: block; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #7b7690; }
+            .dsw-card.cur { border-color: #8c52ff; background: #f6f2ff; }
+            .dsw-card.cur i::after { content: '  b7 here'; color: #b7a5f2; }
+            @media (prefers-reduced-motion: reduce) { .dsw-panel, .dsw-shade, .dsw-tab { transition: none; } }
+            @media print { .dsw { display: none; } }
+        </style>
+        <div class="dsw-shade" id="dswShade"></div>
+        <nav class="dsw-panel" id="dswMenu" aria-label="Design variants">
+            <div class="dsw-head">&#10022; designs</div>
+            <div class="dsw-row">
+                <a class="dsw-card" href="index.html"><i>00</i><b>Entry</b><span>the minimal front door</span></a>
+                <a class="dsw-card" href="alt-terminal.html"><i>01</i><b>Terminal</b><span>the CV as a live shell session</span></a>
+                <a class="dsw-card" href="alt-experiment.html"><i>02</i><b>TrainRun</b><span>career as an experiment tracker</span></a>
+                <a class="dsw-card" href="alt-gridworld.html"><i>03</i><b>Gridworld</b><span>an RL episode: explore, collect reward</span></a>
+                <a class="dsw-card" href="alt-mission.html"><i>04</i><b>Mission</b><span>drone mission control, live swarm</span></a>
+                <a class="dsw-card" href="alt-chat.html"><i>05</i><b>Chat</b><span>the CV as an AI conversation</span></a>
+                <a class="dsw-card" href="alt-diffusion.html"><i>06</i><b>Denoise</b><span>a portfolio out of pure noise</span></a>
+                <a class="dsw-card" href="alt-os.html"><i>07</i><b>GuidoOS</b><span>a tiny desktop operating system</span></a>
+                <a class="dsw-card" href="alt-hearts.html"><i>08</i><b>Kingdom</b><span>a certain beloved opening menu</span></a>
+            </div>
+        </nav>
+        <button class="dsw-tab" id="dswBtn" aria-expanded="false" aria-haspopup="true"><span class="sp">&#10022;</span><span>designs</span></button>
+        <script>
+            (function () {
+                var dsw = document.getElementById('dsw');
+                var btn = document.getElementById('dswBtn');
+                var shade = document.getElementById('dswShade');
+                function setOpen(v) { dsw.classList.toggle('open', v); btn.setAttribute('aria-expanded', v); }
+                btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!dsw.classList.contains('open')); });
+                shade.addEventListener('click', function () { setOpen(false); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+                var here = location.pathname.split('/').pop() || 'index.html';
+                var cards = dsw.querySelectorAll('.dsw-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('href') === here) cards[i].classList.add('cur');
+                }
+            })();
+        </script>
+    </div>
+
+</body>
+</html>

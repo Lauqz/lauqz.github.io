@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuidoOS 26.07</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1c1a26;
+            --soft: #4c4859;
+            --muted: #8b8699;
+            --line: #e3dfec;
+            --violet: #6d5ae6;
+            --pink: #d6467e;
+            --green: #2f9e44;
+            --amber: #b45309;
+            --win: rgba(255, 255, 255, 0.92);
+            --sans: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: var(--sans);
+            color: var(--ink);
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse 90% 70% at 20% 10%, #dcd4ff 0%, transparent 55%),
+                radial-gradient(ellipse 80% 70% at 85% 25%, #ffd9ec 0%, transparent 50%),
+                radial-gradient(ellipse 90% 80% at 50% 100%, #cdeefb 0%, transparent 55%),
+                #f2effa;
+            line-height: 1.55;
+        }
+
+        ::selection { background: var(--violet); color: #fff; }
+
+        .wallpaper-mark {
+            position: fixed;
+            bottom: 90px;
+            right: 34px;
+            font-size: clamp(40px, 8vw, 96px);
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            color: rgba(28, 26, 38, 0.05);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+        }
+
+        /* ---------- Menu bar ---------- */
+        .menubar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 32px;
+            z-index: 500;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(28, 26, 38, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 14px;
+            font-size: 13px;
+        }
+
+        .menubar .apple { font-size: 14px; margin-right: 4px; }
+        .menubar b { font-weight: 700; padding: 3px 8px; border-radius: 5px; }
+        .menubar .mi { padding: 3px 8px; border-radius: 5px; color: var(--soft); cursor: default; }
+        .menubar .mi:hover, .menubar b:hover { background: rgba(28, 26, 38, 0.08); }
+        .menubar .spacer { flex: 1; }
+        .menubar .tray { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--soft); }
+        .menubar .clock { font-variant-numeric: tabular-nums; }
+
+        /* ---------- Desktop icons ---------- */
+        .desk-icons {
+            position: fixed;
+            top: 52px;
+            right: 22px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .dicon {
+            width: 78px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .dicon .di-img {
+            font-size: 34px;
+            filter: drop-shadow(0 3px 4px rgba(28, 26, 38, 0.25));
+            transition: transform 0.15s ease;
+        }
+
+        .dicon:hover .di-img { transform: scale(1.12); }
+
+        .dicon .di-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            padding: 1px 6px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        /* ---------- Windows ---------- */
+        .win {
+            position: fixed;
+            min-width: 300px;
+            background: var(--win);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(28, 26, 38, 0.12);
+            border-radius: 14px;
+            box-shadow: 0 30px 70px -20px rgba(28, 26, 38, 0.4);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .win.open { display: flex; }
+
+        .win-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(28, 26, 38, 0.08);
+            cursor: grab;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.55);
+        }
+
+        .win-title:active { cursor: grabbing; }
+
+        .tl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .tl-close { background: #ff5f57; cursor: pointer; position: relative; }
+        .tl-close:hover::after { content: '×'; position: absolute; inset: 0; font-size: 11px; line-height: 12px; text-align: center; color: rgba(0,0,0,0.5); }
+        .tl-min { background: #febc2e; }
+        .tl-max { background: #28c840; }
+
+        .win-title .wt-name {
+            flex: 1;
+            text-align: center;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--soft);
+            font-family: var(--mono);
+        }
+
+        .win-body {
+            padding: 20px 22px;
+            overflow-y: auto;
+            font-size: 14px;
+            color: var(--soft);
+            flex: 1;
+        }
+
+        .win-body::-webkit-scrollbar { width: 8px; }
+        .win-body::-webkit-scrollbar-thumb { background: rgba(28, 26, 38, 0.15); border-radius: 4px; }
+
+        .win-body h2 { font-size: 18px; color: var(--ink); letter-spacing: -0.01em; margin-bottom: 10px; }
+        .win-body h3 { font-size: 14.5px; color: var(--ink); margin: 16px 0 6px; }
+        .win-body p { margin-bottom: 10px; }
+        .win-body b { color: var(--ink); }
+        .win-body a { color: var(--violet); font-weight: 600; text-decoration: none; }
+        .win-body a:hover { text-decoration: underline; }
+
+        .win-body ul { list-style: none; margin-bottom: 8px; }
+        .win-body li { padding: 3px 0 3px 18px; position: relative; font-size: 13.5px; }
+        .win-body li::before { content: '▸'; position: absolute; left: 2px; color: var(--violet); }
+
+        .meta-line { font-family: var(--mono); font-size: 11px; color: var(--muted); margin: 2px 0 8px; }
+
+        .pillrow { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+
+        .pill {
+            font-family: var(--mono);
+            font-size: 11px;
+            background: rgba(109, 90, 230, 0.12);
+            color: var(--violet);
+            border-radius: 999px;
+            padding: 4px 11px;
+            font-weight: 500;
+        }
+
+        .stamp {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-radius: 999px;
+            padding: 3px 10px;
+            margin-bottom: 8px;
+        }
+
+        .stamp.amber { background: #fdf0dc; color: var(--amber); }
+        .stamp.green { background: #e2f4e6; color: var(--green); }
+
+        .about-head { display: flex; gap: 18px; align-items: center; margin-bottom: 14px; }
+        .about-head img { width: 84px; height: 84px; border-radius: 20px; object-fit: cover; box-shadow: 0 8px 20px -8px rgba(28,26,38,0.4); }
+        .about-head h2 { margin-bottom: 2px; }
+        .about-head .role { font-size: 13px; color: var(--muted); }
+
+        .statrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+        .stat { background: rgba(255,255,255,0.7); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; text-align: center; }
+        .stat b { font-family: var(--mono); font-size: 17px; color: var(--violet); display: block; }
+        .stat span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .job { border-bottom: 1px dashed var(--line); padding: 12px 0; }
+        .job:last-child { border-bottom: none; }
+        .job .jr { font-weight: 700; color: var(--ink); font-size: 14px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .job .jr .jd { font-family: var(--mono); font-size: 10.5px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+
+        .repo { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+        .repo:last-child { border-bottom: none; }
+        .repo .rn { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+        .repo .rd { font-size: 12px; color: var(--muted); flex: 1; }
+        .repo .rs { font-family: var(--mono); font-size: 11.5px; color: var(--amber); font-weight: 700; white-space: nowrap; }
+
+        .obtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 9px 16px;
+            border-radius: 10px;
+            text-decoration: none !important;
+            margin: 4px 6px 4px 0;
+        }
+
+        .obtn.primary { background: linear-gradient(135deg, var(--violet), var(--pink)); color: #fff !important; }
+        .obtn.ghost { background: rgba(255,255,255,0.8); border: 1px solid var(--line); color: var(--ink) !important; }
+
+        .readme { font-family: var(--mono); font-size: 12px; line-height: 1.8; }
+        .readme .cm { color: var(--muted); }
+        .readme .hd { color: var(--violet); font-weight: 700; }
+
+        /* ---------- Dock ---------- */
+        .dock {
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 600;
+            display: flex;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(28, 26, 38, 0.1);
+            border-radius: 20px;
+            padding: 8px 12px;
+            box-shadow: 0 16px 40px -12px rgba(28, 26, 38, 0.35);
+            max-width: calc(100vw - 20px);
+            overflow-x: auto;
+        }
+
+        .dock-app {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+            user-select: none;
+        }
+
+        .dock-app:hover { transform: translateY(-8px) scale(1.15); }
+
+        .dock-app::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -34px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 26, 38, 0.85);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 7px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .dock-app:hover::before { opacity: 1; }
+
+        .dock-app.running::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: var(--ink);
+            opacity: 0.6;
+        }
+
+        .dock-sep { width: 1px; background: rgba(28, 26, 38, 0.15); margin: 6px 4px; }
+
+        /* ---------- Mobile ---------- */
+        @media (max-width: 760px) {
+            .win {
+                inset: 44px 8px 84px 8px !important;
+                width: auto !important;
+                min-width: 0;
+            }
+            .desk-icons { display: none; }
+            .menubar .mi { display: none; }
+            .statrow { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .dock-app:hover { transform: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wallpaper-mark">GuidoOS</div>
+
+    <div class="menubar">
+        <span class="apple">🍥</span>
+        <b>GuidoOS</b>
+        <span class="mi">File</span>
+        <span class="mi">Edit</span>
+        <span class="mi">View</span>
+        <span class="mi">Swarm</span>
+        <span class="mi">Help</span>
+        <span class="spacer"></span>
+        <div class="tray">
+            <span>❤️</span>
+            <span>🔋 100%</span>
+            <span>📶</span>
+            <span class="clock" id="clock">--:--</span>
+        </div>
+    </div>
+
+    <div class="desk-icons">
+        <div class="dicon" data-open="readme"><div class="di-img">📝</div><div class="di-name">README.txt</div></div>
+        <div class="dicon" data-open="research"><div class="di-img">📄</div><div class="di-name">paper.pdf</div></div>
+        <div class="dicon" data-open="projects"><div class="di-img">🗂</div><div class="di-name">repos/</div></div>
+    </div>
+
+    <!-- ============ WINDOWS ============ -->
+
+    <div class="win" id="win-about" style="top: 70px; left: 6vw; width: 460px; max-height: 74vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="about"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">About This Guido</span></div>
+        <div class="win-body">
+            <div class="about-head">
+                <img src="./me.png" alt="Guido Laudenzi">
+                <div>
+                    <h2>Guido Laudenzi</h2>
+                    <div class="role">AI &amp; Research Engineer · GuidoOS 26.07</div>
+                </div>
+            </div>
+            <p>I design the <b>RL environments and evaluations</b> frontier AI models train against, ship <b>generative AI</b> in production, and did <b>multi-agent RL research</b> at AIST Japan - now a paper under review and a 93★ open-source baseline.</p>
+            <div class="statrow">
+                <div class="stat"><b>50+</b><span>RL envs</span></div>
+                <div class="stat"><b id="s-stars">103</b><span>GH stars</span></div>
+                <div class="stat"><b id="s-projects">13</b><span>OS repos</span></div>
+                <div class="stat"><b id="s-years">7.0</b><span>yrs in AI</span></div>
+            </div>
+            <div class="pillrow">
+                <span class="pill">Multi-agent RL</span><span class="pill">LLM Agents</span><span class="pill">Environments &amp; Evals</span><span class="pill">Generative AI</span>
+            </div>
+            <p style="font-size:12.5px;">🎓 M.Sc. AI @ UNIBO - <b>110/110, GPA 4.0/4.0</b> · 🗣 IT native · EN C1 (IELTS 8.0) · JP N5<br>Italy ❤️ Japan · open to opportunities</p>
+        </div>
+    </div>
+
+    <div class="win" id="win-research" style="top: 96px; left: 40vw; width: 500px; max-height: 72vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="research"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">Research.app</span></div>
+        <div class="win-body">
+            <span class="stamp amber">📄 Under review · 2026</span>
+            <h2>An End-to-End Multi-Agent RL Baseline for Vision-Based Quadrotor Swarm Navigation</h2>
+            <div class="meta-line">G. LAUDENZI · A. ROLI · A. KAMIMURA · K. TOMITA - ROBOTICS AND AUTONOMOUS SYSTEMS (ELSEVIER)</div>
+            <p>Decentralized quadrotor swarms trained end-to-end from vision: <b>90–95%</b> full-swarm success on 2/3/5-drone swarms across static, dynamic and forest maps; initial sim2real over ROS.</p>
+            <h3>Open source</h3>
+            <ul>
+                <li><a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL-airsim-sb3</a> - reference implementation (<span id="r-drone">93★</span>, 13 forks)</li>
+                <li>Farama Foundation PRs: SuperSuit <a href="https://github.com/Farama-Foundation/SuperSuit/pull/268" target="_blank" rel="noopener">#268</a> <a href="https://github.com/Farama-Foundation/SuperSuit/pull/269" target="_blank" rel="noopener">#269</a> · PettingZoo <a href="https://github.com/Farama-Foundation/PettingZoo/pull/1406" target="_blank" rel="noopener">#1406</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="win" id="win-career" style="top: 130px; left: 18vw; width: 560px; max-height: 76vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="career"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">Career.app - 6 items</span></div>
+        <div class="win-body">
+            <div class="job">
+                <div class="jr">Machine Learning Research Engineer <span class="jd">04/2025 - now</span></div>
+                <div class="meta-line">FRONTIER AI TRAINING &amp; EVALS · CLIENT UNDER NDA 🤐</div>
+                <ul>
+                    <li>Authored <b>50+ RL environments</b>, reviewed <b>120+</b> - shaped rewards anchored to naive &amp; expert baselines, calibrated so frontier agents fail them</li>
+                    <li>Extended <b>tau-bench</b>: 20–30-API interfaces, 100 tasks each, verified against ground-truth call sequences</li>
+                    <li>Verifiable-reward suite across <b>25 domains</b> - OR-Tools ground truth · blind bug adjudication on GPU</li>
+                    <li>Gold-medal chains for <b>40 Kaggle/MLE-bench tasks</b> → client model trained on <b>50×H100</b></li>
+                </ul>
+            </div>
+            <div class="job">
+                <div class="jr">Founder &amp; CEO - TamaAI S.r.l.s. <span class="jd">05/2026 - now</span></div>
+                <div class="meta-line">ITALY</div>
+            </div>
+            <div class="job">
+                <div class="jr">AI Engineer - Machine Learning Reply <span class="jd">04/2024 - now</span></div>
+                <div class="meta-line">MILAN, ITALY</div>
+                <ul>
+                    <li>Brand-style image generation: <b>$1,000/photo → $0.10/image</b> @ 30% first-pass brand acceptance</li>
+                    <li><b>LoRA, LoKr &amp; full fine-tuning</b> of Z-Image, Qwen-Image, Krea, Ideogram - print-resolution upscale</li>
+                    <li>Multimodal RAG (Azure image vector store) + Text-to-SQL · Terraform · account lead</li>
+                    <li>Sketch → 2.5D → <b>3D meshes</b> (TRELLIS 2, self-hosted H100) - 100+ assets in pilot</li>
+                    <li>OCR receipts on GCP: template-free LLM extractor, <b>−30%</b> extraction errors</li>
+                </ul>
+            </div>
+            <div class="job">
+                <div class="jr">AI Engineer - AIDAPT S.r.l. <span class="jd">10/2023 - 03/2024</span></div>
+                <div class="meta-line">ANCONA, ITALY</div>
+                <ul>
+                    <li>LLM fine-tuning in Axolotl (text → knowledge graphs) · production RAG on LangChain + FAISS · NeRF outlier clustering</li>
+                </ul>
+            </div>
+            <div class="job">
+                <div class="jr">RL Researcher - AIST <span class="jd">04/2023 - 10/2023</span></div>
+                <div class="meta-line">TSUKUBA, JAPAN</div>
+                <ul>
+                    <li>Vision-based MARL for quadrotor swarms (UE4 + AirSim, SB3, PettingZoo) - see Research.app</li>
+                </ul>
+            </div>
+            <div class="job">
+                <div class="jr">ML Research Intern - AIST <span class="jd">08/2019 - 11/2019</span></div>
+                <div class="meta-line">TSUKUBA, JAPAN · FIRST OF TWO APPOINTMENTS</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="win" id="win-projects" style="top: 160px; left: 52vw; width: 440px; max-height: 64vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="projects"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">repos/ - live from GitHub</span></div>
+        <div class="win-body">
+            <div class="repo">
+                <span class="rn">🚁 <a href="https://github.com/Lauqz/Drone-Swarm-RL-airsim-sb3" target="_blank" rel="noopener">Drone-Swarm-RL</a></span>
+                <span class="rd">MARL drone swarms - UE4, AirSim, SB3</span>
+                <span class="rs" id="o-drone">★ 93</span>
+            </div>
+            <div class="repo">
+                <span class="rn">📦 <a href="https://github.com/Lauqz/MCVRP---Multiple-Courier-Planning" target="_blank" rel="noopener">MCVRP</a></span>
+                <span class="rd">Courier planning - CP, SMT, MIP</span>
+                <span class="rs" id="o-mcvrp">★ 6</span>
+            </div>
+            <div class="repo">
+                <span class="rn">💣 <a href="https://github.com/Lauqz/BlastPursuitMARL" target="_blank" rel="noopener">BlastPursuitMARL</a></span>
+                <span class="rd">Bomberman-style multi-agent RL env</span>
+                <span class="rs" id="o-blast">★ 4</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="win" id="win-skills" style="top: 120px; left: 30vw; width: 470px; max-height: 70vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="skills"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">Skills.app - system report</span></div>
+        <div class="win-body">
+            <h3 style="margin-top:0;">🎮 RL &amp; Environments</h3>
+            <div class="pillrow"><span class="pill">Stable-Baselines3</span><span class="pill">PettingZoo</span><span class="pill">Gymnasium</span><span class="pill">PPO / SAC / QR-DQN</span><span class="pill">Reward design</span><span class="pill">Verifiable rewards</span><span class="pill">sim2real</span></div>
+            <h3>🤖 LLMs &amp; Agents</h3>
+            <div class="pillrow"><span class="pill">SFT / LoRA / LoKr</span><span class="pill">RAG</span><span class="pill">Tool calling</span><span class="pill">tau-bench</span><span class="pill">MLE-bench</span><span class="pill">LangGraph</span><span class="pill">MCP</span></div>
+            <h3>🎨 Generative &amp; 3D</h3>
+            <div class="pillrow"><span class="pill">Stable Diffusion</span><span class="pill">FLUX</span><span class="pill">Qwen-Image</span><span class="pill">Z-Image</span><span class="pill">TRELLIS</span><span class="pill">Hunyuan3D</span><span class="pill">NeRF</span></div>
+            <h3>⚙️ Core &amp; Infra</h3>
+            <div class="pillrow"><span class="pill">Python</span><span class="pill">PyTorch</span><span class="pill">JAX</span><span class="pill">OR-Tools</span><span class="pill">Docker</span><span class="pill">Linux</span><span class="pill">Azure</span><span class="pill">GCP</span><span class="pill">Terraform</span><span class="pill">H100</span></div>
+        </div>
+    </div>
+
+    <div class="win" id="win-contact" style="top: 190px; left: 34vw; width: 420px;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="contact"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">Contact.app</span></div>
+        <div class="win-body">
+            <h2>Open a channel 📡</h2>
+            <p>Priority topics: RL environments, evals, LLM agents, generative AI - and anything in Japan.</p>
+            <a class="obtn primary" href="mailto:guido.laudenzi@libero.it">✉ Email Guido</a>
+            <a class="obtn ghost" href="https://www.linkedin.com/in/lauqzz/" target="_blank" rel="noopener">LinkedIn ↗</a>
+            <a class="obtn ghost" href="https://github.com/Lauqz" target="_blank" rel="noopener">GitHub ↗</a>
+            <p style="margin-top:10px; font-family: var(--mono); font-size: 11px; color: var(--muted);">guido.laudenzi@libero.it · Italy ❤️ Japan</p>
+        </div>
+    </div>
+
+    <div class="win" id="win-readme" style="top: 84px; left: 56vw; width: 430px; max-height: 62vh;">
+        <div class="win-title"><span class="tl-dot tl-close" data-close="readme"></span><span class="tl-dot tl-min"></span><span class="tl-dot tl-max"></span><span class="wt-name">README.txt</span></div>
+        <div class="win-body readme">
+            <span class="hd"># GuidoOS 26.07 "Tsukuba"</span><br>
+            <span class="cm">## a portfolio, disguised as an operating system</span><br><br>
+            Welcome. Everything on this desktop is real:<br>
+            the paper, the 50+ RL environments, the $0.10<br>
+            images, the two AIST appointments.<br><br>
+            <span class="cm"># tips</span><br>
+            · drag windows by their title bars<br>
+            · the dock opens the apps<br>
+            · one client is under NDA - the red close<br>
+            &nbsp;&nbsp;button works better than asking who it is<br><br>
+            <span class="cm"># uptime</span><br>
+            in AI since 2019 · no kernel panics yet
+        </div>
+    </div>
+
+    <!-- ============ DOCK ============ -->
+    <div class="dock">
+        <div class="dock-app" data-app="about" data-label="About This Guido">👤</div>
+        <div class="dock-app" data-app="research" data-label="Research.app">📄</div>
+        <div class="dock-app" data-app="career" data-label="Career.app">🧭</div>
+        <div class="dock-app" data-app="projects" data-label="repos/">🗂</div>
+        <div class="dock-app" data-app="skills" data-label="Skills.app">🧰</div>
+        <div class="dock-sep"></div>
+        <div class="dock-app" data-app="readme" data-label="README.txt">📝</div>
+        <div class="dock-app" data-app="contact" data-label="Contact.app">✉️</div>
+    </div>
+
+    <!-- ===== Designs switcher ===== -->
+    <div class="dsw" id="dsw">
+        <style>
+            .dsw-tab { position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 4001; display: inline-flex; align-items: center; gap: 8px; writing-mode: vertical-rl; padding: 15px 6px 15px 7px; font-family: 'Space Grotesk', 'JetBrains Mono', 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #5b566e; background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(20, 18, 31, 0.1); border-left: none; border-radius: 0 11px 11px 0; cursor: pointer; transition: background .2s ease, color .2s ease, padding .2s ease; }
+            .dsw-tab:hover { background: rgba(255, 255, 255, 0.95); color: #14121f; padding-left: 10px; }
+            .dsw-tab .sp { background: linear-gradient(135deg, #8c52ff, #22d3ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-size: 13px; }
+            .dsw-shade { position: fixed; inset: 0; z-index: 3999; background: rgba(20, 18, 31, 0.18); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+            .dsw.open .dsw-shade { opacity: 1; pointer-events: auto; }
+            .dsw-panel { position: fixed; top: 0; left: 0; bottom: 0; z-index: 4000; width: min(280px, 82vw); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid rgba(20, 18, 31, 0.08); box-shadow: 24px 0 50px -24px rgba(20, 18, 31, 0.35); transform: translateX(-102%); transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1); overflow-y: auto; overscroll-behavior: contain; }
+            .dsw.open .dsw-panel { transform: translateX(0); }
+            .dsw-head { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8aa8; padding: 18px 18px 4px; }
+            .dsw-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 14px 18px; }
+            .dsw-card { text-decoration: none !important; border: 1px solid #e6e3ef; border-radius: 13px; padding: 12px 14px; background: #fff; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+            .dsw-card:hover { transform: translateX(3px); border-color: #c9bcf5; box-shadow: 0 10px 24px -12px rgba(109, 90, 230, 0.4); }
+            .dsw-card i { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; font-style: normal; color: #8c52ff; letter-spacing: 0.1em; margin-bottom: 5px; }
+            .dsw-card b { display: block; font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 700; line-height: 1.2; color: #14121f; margin-bottom: 3px; }
+            .dsw-card span { display: block; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #7b7690; }
+            .dsw-card.cur { border-color: #8c52ff; background: #f6f2ff; }
+            .dsw-card.cur i::after { content: '  b7 here'; color: #b7a5f2; }
+            @media (prefers-reduced-motion: reduce) { .dsw-panel, .dsw-shade, .dsw-tab { transition: none; } }
+            @media print { .dsw { display: none; } }
+        </style>
+        <div class="dsw-shade" id="dswShade"></div>
+        <nav class="dsw-panel" id="dswMenu" aria-label="Design variants">
+            <div class="dsw-head">&#10022; designs</div>
+            <div class="dsw-row">
+                <a class="dsw-card" href="index.html"><i>00</i><b>Entry</b><span>the minimal front door</span></a>
+                <a class="dsw-card" href="alt-terminal.html"><i>01</i><b>Terminal</b><span>the CV as a live shell session</span></a>
+                <a class="dsw-card" href="alt-experiment.html"><i>02</i><b>TrainRun</b><span>career as an experiment tracker</span></a>
+                <a class="dsw-card" href="alt-gridworld.html"><i>03</i><b>Gridworld</b><span>an RL episode: explore, collect reward</span></a>
+                <a class="dsw-card" href="alt-mission.html"><i>04</i><b>Mission</b><span>drone mission control, live swarm</span></a>
+                <a class="dsw-card" href="alt-chat.html"><i>05</i><b>Chat</b><span>the CV as an AI conversation</span></a>
+                <a class="dsw-card" href="alt-diffusion.html"><i>06</i><b>Denoise</b><span>a portfolio out of pure noise</span></a>
+                <a class="dsw-card" href="alt-os.html"><i>07</i><b>GuidoOS</b><span>a tiny desktop operating system</span></a>
+                <a class="dsw-card" href="alt-hearts.html"><i>08</i><b>Kingdom</b><span>a certain beloved opening menu</span></a>
+            </div>
+        </nav>
+        <button class="dsw-tab" id="dswBtn" aria-expanded="false" aria-haspopup="true"><span class="sp">&#10022;</span><span>designs</span></button>
+        <script>
+            (function () {
+                var dsw = document.getElementById('dsw');
+                var btn = document.getElementById('dswBtn');
+                var shade = document.getElementById('dswShade');
+                function setOpen(v) { dsw.classList.toggle('open', v); btn.setAttribute('aria-expanded', v); }
+                btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!dsw.classList.contains('open')); });
+                shade.addEventListener('click', function () { setOpen(false); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+                var here = location.pathname.split('/').pop() || 'index.html';
+                var cards = dsw.querySelectorAll('.dsw-card');
+                for (var i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('href') === here) cards[i].classList.add('cur');
+                }
+            })();
+        </script>
+    </div>
+
+    <script>
+        const isMobile = () => window.innerWidth <= 760;
+
+        // ---- Clock ----
+        function tickClock() {
+            const d = new Date();
+            document.getElementById('clock').textContent =
+                d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+                '  ' + d.toTimeString().slice(0, 5);
+        }
+        tickClock();
+        setInterval(tickClock, 15000);
+
+        // ---- Window manager ----
+        let zTop = 20;
+
+        function bringFront(win) {
+            zTop += 1;
+            win.style.zIndex = zTop;
+        }
+
+        function openApp(app) {
+            const win = document.getElementById('win-' + app);
+            if (!win) return;
+            if (isMobile()) {
+                document.querySelectorAll('.win.open').forEach(w => { if (w !== win) closeWin(w.id.slice(4)); });
+            }
+            win.classList.add('open');
+            bringFront(win);
+            const dockIcon = document.querySelector('.dock-app[data-app="' + app + '"]');
+            if (dockIcon) dockIcon.classList.add('running');
+        }
+
+        function closeWin(app) {
+            const win = document.getElementById('win-' + app);
+            if (win) win.classList.remove('open');
+            const dockIcon = document.querySelector('.dock-app[data-app="' + app + '"]');
+            if (dockIcon) dockIcon.classList.remove('running');
+        }
+
+        document.querySelectorAll('.dock-app').forEach(icon => {
+            icon.addEventListener('click', () => {
+                const app = icon.dataset.app;
+                const win = document.getElementById('win-' + app);
+                if (win.classList.contains('open') && parseInt(win.style.zIndex || 0) === zTop) {
+                    closeWin(app);
+                } else {
+                    openApp(app);
+                }
+            });
+        });
+
+        document.querySelectorAll('.dicon').forEach(icon => {
+            icon.addEventListener('click', () => openApp(icon.dataset.open));
+        });
+
+        document.querySelectorAll('.tl-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeWin(btn.dataset.close);
+            });
+        });
+
+        document.querySelectorAll('.win').forEach(win => {
+            win.addEventListener('pointerdown', () => bringFront(win));
+        });
+
+        // ---- Dragging ----
+        document.querySelectorAll('.win-title').forEach(bar => {
+            const win = bar.closest('.win');
+            let sx, sy, ox, oy, dragging = false;
+
+            bar.addEventListener('pointerdown', (e) => {
+                if (isMobile() || e.target.classList.contains('tl-close')) return;
+                dragging = true;
+                sx = e.clientX; sy = e.clientY;
+                const r = win.getBoundingClientRect();
+                ox = r.left; oy = r.top;
+                bar.setPointerCapture(e.pointerId);
+                bringFront(win);
+            });
+
+            bar.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                let nx = ox + (e.clientX - sx);
+                let ny = oy + (e.clientY - sy);
+                nx = Math.max(-win.offsetWidth + 120, Math.min(window.innerWidth - 120, nx));
+                ny = Math.max(34, Math.min(window.innerHeight - 60, ny));
+                win.style.left = nx + 'px';
+                win.style.top = ny + 'px';
+            });
+
+            bar.addEventListener('pointerup', () => { dragging = false; });
+            bar.addEventListener('pointercancel', () => { dragging = false; });
+        });
+
+        // ---- Boot: open a sensible default set ----
+        openApp('about');
+        if (!isMobile()) {
+            openApp('readme');
+        }
+
+        // ---- Years stat ----
+        (function () {
+            const now = new Date();
+            document.getElementById('s-years').textContent =
+                (now.getFullYear() - 2019 + now.getMonth() / 12).toFixed(1);
+        })();
+
+        // ---- Live stars ----
+        fetch('./stats.json?' + Date.now()).then(r => r.json()).then(s => {
+            if (s.projectCount) document.getElementById('s-projects').textContent = s.projectCount;
+            if (!s.stars) return;
+            const total = Object.values(s.stars).reduce((a, b) => a + (Number(b) || 0), 0);
+            document.getElementById('s-stars').textContent = total;
+            const set = (id, v, suffix) => { const el = document.getElementById(id); if (el && v !== undefined) el.textContent = (suffix ? '' : '★ ') + v + (suffix || ''); };
+            set('o-drone', s.stars.drone); set('o-mcvrp', s.stars.mcvrp); set('o-blast', s.stars.blast);
+            set('r-drone', s.stars.drone, '★');
+        }).catch(() => {});
+    </script>
+</body>
+</html>
