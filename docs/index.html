@@ -259,11 +259,29 @@
         .skin-meta .starct {
             float: right;
             font-family: var(--mono);
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             color: #b8860b;
-            margin: 3px 8px 0 0;
+            margin: 1px 8px 0 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 6px;
+            transition: transform 0.15s ease, text-shadow 0.15s ease;
         }
+
+        .skin-meta .starct:hover {
+            transform: scale(1.15);
+            text-shadow: 0 0 8px rgba(212, 175, 55, 0.8);
+        }
+
+        .skin-meta .starct.done {
+            color: #d4af37;
+            cursor: default;
+        }
+
+        .skin-meta .starct.done:hover { transform: none; text-shadow: none; }
 
         .skin-meta .key {
             float: right;
@@ -512,7 +530,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">1</span>
-                    <span class="starct" id="sc-terminal">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-terminal" data-skin="terminal" title="star this design">&#9734; &#8212;</button>
                     <span class="no">01</span>
                     <b>Terminal</b>
                     <span>the CV as a live shell session</span>
@@ -530,7 +548,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">2</span>
-                    <span class="starct" id="sc-experiment">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-experiment" data-skin="experiment" title="star this design">&#9734; &#8212;</button>
                     <span class="no">02</span>
                     <b>TrainRun</b>
                     <span>career as an experiment tracker</span>
@@ -545,7 +563,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">3</span>
-                    <span class="starct" id="sc-gridworld">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-gridworld" data-skin="gridworld" title="star this design">&#9734; &#8212;</button>
                     <span class="no">03</span>
                     <b>Gridworld</b>
                     <span>an RL episode: explore, collect reward</span>
@@ -559,7 +577,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">4</span>
-                    <span class="starct" id="sc-mission">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-mission" data-skin="mission" title="star this design">&#9734; &#8212;</button>
                     <span class="no">04</span>
                     <b>Mission</b>
                     <span>drone mission control, live swarm</span>
@@ -573,7 +591,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">5</span>
-                    <span class="starct" id="sc-chat">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-chat" data-skin="chat" title="star this design">&#9734; &#8212;</button>
                     <span class="no">05</span>
                     <b>Chat</b>
                     <span>the CV as an AI conversation</span>
@@ -591,7 +609,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">6</span>
-                    <span class="starct" id="sc-diffusion">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-diffusion" data-skin="diffusion" title="star this design">&#9734; &#8212;</button>
                     <span class="no">06</span>
                     <b>Denoise</b>
                     <span>a portfolio out of pure noise</span>
@@ -607,7 +625,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">7</span>
-                    <span class="starct" id="sc-os">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-os" data-skin="os" title="star this design">&#9734; &#8212;</button>
                     <span class="no">07</span>
                     <b>GuidoOS</b>
                     <span>a tiny desktop operating system</span>
@@ -623,7 +641,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">8</span>
-                    <span class="starct" id="sc-hearts">&#9733; &#8212;</span>
+                    <button class="starct" id="sc-hearts" data-skin="hearts" title="star this design">&#9734; &#8212;</button>
                     <span class="no">08</span>
                     <b>Kingdom</b>
                     <span>a certain beloved opening menu</span>
@@ -654,11 +672,29 @@
                 document.getElementById('siteViews').innerHTML = '&#128065; ' + fmt(d.value) + ' visits';
             }).catch(function () {});
             var names = ['terminal', 'experiment', 'gridworld', 'mission', 'chat', 'diffusion', 'os', 'hearts'];
+            function starred(skin) {
+                try { return localStorage.getItem('vst-star-' + skin) === '1'; } catch (e) { return false; }
+            }
+            function paint(el, n, done) {
+                el.innerHTML = (done ? '&#9733; ' : '&#9734; ') + fmt(n);
+                el.classList.toggle('done', done);
+                if (done) el.title = 'you starred this design';
+            }
             names.forEach(function (skin) {
+                var el = document.getElementById('sc-' + skin);
+                if (!el) return;
                 fetch(API + '/get/' + SPACE + '/star-' + skin).then(function (r) { return r.ok ? r.json() : { value: 0 }; }).then(function (d) {
-                    var el = document.getElementById('sc-' + skin);
-                    if (el) el.innerHTML = '&#9733; ' + fmt(d.value || 0);
+                    paint(el, d.value || 0, starred(skin));
                 }).catch(function () {});
+                el.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (starred(skin)) return;
+                    try { localStorage.setItem('vst-star-' + skin, '1'); } catch (e2) {}
+                    fetch(API + '/hit/' + SPACE + '/star-' + skin).then(function (r) { return r.json(); }).then(function (d) {
+                        paint(el, d.value, true);
+                    }).catch(function () {});
+                });
             });
         })();
 
