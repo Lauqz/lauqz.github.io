@@ -706,6 +706,54 @@
         }).catch(() => {});
     </script>
 
+
+    <!-- ===== views + star ===== -->
+    <div class="vst" id="vst" data-skin="mission">
+        <style>
+            .vst { position: fixed; left: 14px; bottom: 14px; z-index: 3500; display: inline-flex; align-items: center; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6b6880; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(20, 18, 31, 0.12); border-radius: 999px; padding: 7px 13px; }
+            .vst .vst-sep { opacity: 0.4; }
+            .vst button.vst-star { font-family: inherit; font-size: 11px; color: #a8791a; background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 0; }
+            .vst button.vst-star:hover { text-shadow: 0 0 8px rgba(212, 175, 55, 0.7); }
+            .vst button.vst-star.done { cursor: default; color: #d4af37; font-weight: 700; }
+            @media print { .vst { display: none; } }
+        </style>
+        <span id="vstViews" title="site visits">&#128065; &#8212;</span>
+        <span class="vst-sep">&#183;</span>
+        <button class="vst-star" id="vstStar" title="star this design">&#9734; <span id="vstStarN">&#8212;</span></button>
+        <script>
+            (function () {
+                var API = 'https://abacus.jasoncameron.dev';
+                var SPACE = 'lauqz-github-io';
+                var skin = document.getElementById('vst').getAttribute('data-skin');
+                var viewsEl = document.getElementById('vstViews');
+                var starBtn = document.getElementById('vstStar');
+                var starN = document.getElementById('vstStarN');
+                function fmt(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; }
+                fetch(API + '/hit/' + SPACE + '/views').then(function (r) { return r.json(); }).then(function (d) {
+                    viewsEl.innerHTML = '&#128065; ' + fmt(d.value);
+                }).catch(function () { viewsEl.innerHTML = '&#128065; ?'; });
+                var starred = false;
+                try { starred = localStorage.getItem('vst-star-' + skin) === '1'; } catch (e) {}
+                function setStar(n, done) {
+                    starBtn.innerHTML = (done ? '&#9733; ' : '&#9734; ') + '<span id="vstStarN">' + fmt(n) + '</span>';
+                    if (done) { starBtn.classList.add('done'); starBtn.title = 'you starred this design'; }
+                }
+                fetch(API + '/get/' + SPACE + '/star-' + skin).then(function (r) { return r.ok ? r.json() : { value: 0 }; }).then(function (d) {
+                    setStar(d.value || 0, starred);
+                }).catch(function () {});
+                starBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (starred) return;
+                    starred = true;
+                    try { localStorage.setItem('vst-star-' + skin, '1'); } catch (e2) {}
+                    fetch(API + '/hit/' + SPACE + '/star-' + skin).then(function (r) { return r.json(); }).then(function (d) {
+                        setStar(d.value, true);
+                    }).catch(function () {});
+                });
+            })();
+        </script>
+    </div>
+
     <!-- ===== Designs switcher ===== -->
     <div class="dsw" id="dsw">
         <style>

@@ -256,6 +256,15 @@
             line-height: 1.45;
         }
 
+        .skin-meta .starct {
+            float: right;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+            color: #b8860b;
+            margin: 3px 8px 0 0;
+        }
+
         .skin-meta .key {
             float: right;
             font-family: var(--mono);
@@ -503,6 +512,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">1</span>
+                    <span class="starct" id="sc-terminal">&#9733; &#8212;</span>
                     <span class="no">01</span>
                     <b>Terminal</b>
                     <span>the CV as a live shell session</span>
@@ -520,6 +530,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">2</span>
+                    <span class="starct" id="sc-experiment">&#9733; &#8212;</span>
                     <span class="no">02</span>
                     <b>TrainRun</b>
                     <span>career as an experiment tracker</span>
@@ -534,6 +545,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">3</span>
+                    <span class="starct" id="sc-gridworld">&#9733; &#8212;</span>
                     <span class="no">03</span>
                     <b>Gridworld</b>
                     <span>an RL episode: explore, collect reward</span>
@@ -547,6 +559,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">4</span>
+                    <span class="starct" id="sc-mission">&#9733; &#8212;</span>
                     <span class="no">04</span>
                     <b>Mission</b>
                     <span>drone mission control, live swarm</span>
@@ -560,6 +573,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">5</span>
+                    <span class="starct" id="sc-chat">&#9733; &#8212;</span>
                     <span class="no">05</span>
                     <b>Chat</b>
                     <span>the CV as an AI conversation</span>
@@ -577,6 +591,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">6</span>
+                    <span class="starct" id="sc-diffusion">&#9733; &#8212;</span>
                     <span class="no">06</span>
                     <b>Denoise</b>
                     <span>a portfolio out of pure noise</span>
@@ -592,6 +607,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">7</span>
+                    <span class="starct" id="sc-os">&#9733; &#8212;</span>
                     <span class="no">07</span>
                     <b>GuidoOS</b>
                     <span>a tiny desktop operating system</span>
@@ -607,6 +623,7 @@
                 </div>
                 <div class="skin-meta">
                     <span class="key">8</span>
+                    <span class="starct" id="sc-hearts">&#9733; &#8212;</span>
                     <span class="no">08</span>
                     <b>Kingdom</b>
                     <span>a certain beloved opening menu</span>
@@ -622,11 +639,28 @@
     </main>
 
     <footer>
-        © 2026 Guido Laudenzi · <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a> · same content, many skins
+        © 2026 Guido Laudenzi · <a href="mailto:guido.laudenzi@libero.it">guido.laudenzi@libero.it</a> · same content, many skins · <span id="siteViews" title="site visits">&#128065; &#8212;</span>
     </footer>
 
     <script>
         var skins = Array.prototype.slice.call(document.querySelectorAll('#grid .skin'));
+
+        // ---- live counters (abacus.jasoncameron.dev) ----
+        (function () {
+            var API = 'https://abacus.jasoncameron.dev';
+            var SPACE = 'lauqz-github-io';
+            function fmt(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; }
+            fetch(API + '/hit/' + SPACE + '/views').then(function (r) { return r.json(); }).then(function (d) {
+                document.getElementById('siteViews').innerHTML = '&#128065; ' + fmt(d.value) + ' visits';
+            }).catch(function () {});
+            var names = ['terminal', 'experiment', 'gridworld', 'mission', 'chat', 'diffusion', 'os', 'hearts'];
+            names.forEach(function (skin) {
+                fetch(API + '/get/' + SPACE + '/star-' + skin).then(function (r) { return r.ok ? r.json() : { value: 0 }; }).then(function (d) {
+                    var el = document.getElementById('sc-' + skin);
+                    if (el) el.innerHTML = '&#9733; ' + fmt(d.value || 0);
+                }).catch(function () {});
+            });
+        })();
 
         document.getElementById('surprise').addEventListener('click', function () {
             var pick = skins[Math.floor(Math.random() * skins.length)];
